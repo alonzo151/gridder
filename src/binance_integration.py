@@ -40,7 +40,7 @@ class BinanceIntegration:
         
         if signed:
             if not self.api_key or not self.api_secret:
-                if self.test_mode:
+                if self.test_mode and endpoint in ["/api/v3/order", "/api/v3/openOrders"]:
                     return self._simulate_response(endpoint, params)
                 else:
                     raise ValueError("API credentials required for live mode")
@@ -65,44 +65,22 @@ class BinanceIntegration:
             
         except requests.exceptions.RequestException as e:
             logger.error(f"Binance API request failed: {e}")
-            if self.test_mode and not signed:
-                logger.warning("Falling back to simulated data in test mode")
-                return self._simulate_response(endpoint, params)
             raise
 
     def _simulate_response(self, endpoint: str, params: Dict[str, Any] = None) -> Dict[str, Any]:
-        if endpoint == "/api/v3/account":
-            return {
-                "balances": [
-                    {"asset": "BTC", "free": "1.0", "locked": "0.0"},
-                    {"asset": "FDUSD", "free": "50000.0", "locked": "0.0"}
-                ]
-            }
-        elif endpoint == "/api/v3/ticker/bookTicker":
-            return {
-                "symbol": params.get("symbol", "BTCFDUSD"),
-                "bidPrice": "99500.00",
-                "bidQty": "0.1",
-                "askPrice": "99600.00",
-                "askQty": "0.1"
-            }
-        elif endpoint == "/api/v3/exchangeInfo":
-            return {
-                "symbols": [
-                    {
-                        "symbol": "BTCFDUSD",
-                        "filters": [
-                            {"filterType": "PRICE_FILTER", "tickSize": "0.01"}
-                        ]
-                    }
-                ]
-            }
-        elif endpoint == "/api/v3/order":
+        if endpoint == "/api/v3/order":
             return {
                 "symbol": params.get("symbol"),
                 "orderId": 12345,
                 "clientOrderId": "test_order",
                 "status": "NEW"
+            }
+        elif endpoint == "/api/v3/account":
+            return {
+                "balances": [
+                    {"asset": "BTC", "free": "1.0", "locked": "0.0"},
+                    {"asset": "FDUSD", "free": "50000.0", "locked": "0.0"}
+                ]
             }
         else:
             return {}
