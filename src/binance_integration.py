@@ -162,6 +162,28 @@ class BinanceIntegration:
             else:
                 raise
 
+    def get_size_tick(self, symbol: str) -> float:
+        try:
+            params = {"symbol": symbol}
+            response = self._make_request('GET', '/api/v3/exchangeInfo', params)
+            
+            for symbol_info in response.get('symbols', []):
+                if symbol_info['symbol'] == symbol:
+                    for filter_info in symbol_info.get('filters', []):
+                        if filter_info['filterType'] == 'LOT_SIZE':
+                            step_size = float(filter_info['stepSize'])
+                            logger.debug(f"Size tick for {symbol}: {step_size}")
+                            return step_size
+            
+            logger.warning(f"Size tick not found for {symbol}, using default 0.000001")
+            return 0.000001
+        except Exception as e:
+            if self.test_mode:
+                logger.warning(f"Failed to get size tick for {symbol} in test mode, using default 0.000001: {e}")
+                return 0.000001
+            else:
+                raise
+
     def place_order(self, symbol: str, side: str, order_type: str, quantity: float, 
                    price: float = None, time_in_force: str = "GTC", post_only: bool = True) -> Dict[str, Any]:
         params = {
