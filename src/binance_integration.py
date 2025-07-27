@@ -52,11 +52,11 @@ class BinanceIntegration:
         
         try:
             if method == 'GET':
-                response = self.session.get(url, params=params, headers=headers)
+                response = self.session.get(url, params=params, headers=headers, timeout=10)
             elif method == 'POST':
-                response = self.session.post(url, params=params, headers=headers)
+                response = self.session.post(url, params=params, headers=headers, timeout=10)
             elif method == 'DELETE':
-                response = self.session.delete(url, params=params, headers=headers)
+                response = self.session.delete(url, params=params, headers=headers, timeout=10)
             else:
                 raise ValueError(f"Unsupported HTTP method: {method}")
             
@@ -64,15 +64,28 @@ class BinanceIntegration:
             return response.json()
             
         except requests.exceptions.RequestException as e:
-            logger.error(f"Binance API request failed: {e}")
+            logger.error(f"Binance API request failed for {endpoint}: {e}")
+            if not signed and endpoint in ["/api/v3/ticker/bookTicker", "/api/v3/exchangeInfo"]:
+                logger.warning(f"Retrying market data request for {endpoint} after failure")
+                try:
+                    import time
+                    time.sleep(1)  # Brief delay before retry
+                    if method == 'GET':
+                        response = self.session.get(url, params=params, headers=headers, timeout=15)
+                    response.raise_for_status()
+                    return response.json()
+                except requests.exceptions.RequestException as retry_e:
+                    logger.error(f"Retry failed for {endpoint}: {retry_e}")
+                    raise Exception(f"Market data unavailable for {endpoint}. Please check network connection and Binance API status.")
             raise
 
     def _simulate_response(self, endpoint: str, params: Dict[str, Any] = None) -> Dict[str, Any]:
         if endpoint == "/api/v3/order":
+            import time
             return {
                 "symbol": params.get("symbol"),
-                "orderId": 12345,
-                "clientOrderId": "test_order",
+                "orderId": int(time.time() * 1000),  # Use current timestamp to avoid duplicate IDs
+                "clientOrderId": f"test_order_{int(time.time() * 1000)}",
                 "status": "NEW"
             }
         elif endpoint == "/api/v3/account":
