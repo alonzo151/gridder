@@ -422,6 +422,7 @@ class TraderBot:
             
             orders_to_cancel = []
             max_distance_percent = 5.0
+            cancelled_orders = []
             
             for i, order in enumerate(self.open_orders):
                 order_price = order['price']
@@ -429,9 +430,35 @@ class TraderBot:
                 
                 if distance_percent > max_distance_percent:
                     orders_to_cancel.append(i)
+                    cancelled_orders.append(order.copy())
                     logger.info(f"Cancelling squeeze order: {order['side']} at {order_price} (too far from current price)")
             
             for i in reversed(orders_to_cancel):
                 self.open_orders.pop(i)
+            
+            self._place_squeeze_orders(current_price, cancelled_orders)
         
         self.last_price = current_price
+
+    def _place_squeeze_orders(self, current_price: float, cancelled_orders: List[Dict[str, Any]]):
+        """Place new orders closer to current price during squeeze events"""
+        if not cancelled_orders:
+            return
+        
+        squeeze_distance_percent = 2.0  # Place orders 2% away from current price
+        price_tick = self.binance.get_price_tick(self.config['spot_market'])
+        
+        for cancelled_order in cancelled_orders:
+            side = cancelled_order['side']
+            quantity = cancelled_order['quantity']
+            
+            if side == 'BUY':
+                new_price = current_price * (1 - squeeze_distance_percent / 100)
+            else:
+                new_price = current_price * (1 + squeeze_distance_percent / 100)
+            
+            new_price = round(new_price / price_tick) * price_tick
+            
+            if self._should_place_order(new_price, side, current_price):
+                logger.info(f"Placing squeeze order: {side} {quantity} at {new_price} (replacing distant order)")
+                self._place_order(side, quantity, new_price)
