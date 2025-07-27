@@ -1,0 +1,11 @@
+2025-07-27 14:04:58,080|config_validator.py|validate_config|Configuration validation passed
+2025-07-27 14:04:58,081|binance_integration.py|__init__|Initialized Binance integration in test mode
+2025-07-27 14:04:58,113|binance_integration.py|_make_request|Binance API request failed: 451 Client Error:  for url: https://api.binance.com/api/v3/exchangeInfo?symbol=BTCFDUSD
+2025-07-27 14:05:23,350|config_validator.py|validate_config|Configuration validation passed
+2025-07-27 14:05:23,350|binance_integration.py|__init__|Initialized Binance integration in test mode
+2025-07-27 14:05:23,411|binance_integration.py|_make_request|Binance API request failed: 451 Client Error:  for url: https://api.binance.com/api/v3/exchangeInfo?symbol=BTCFDUSD
+2025-07-27 14:05:23,411|binance_integration.py|_make_request|Falling back to simulated data in test mode
+2025-07-27 14:05:23,411|grid_calculator.py|__init__|Initialized Grid Calculator
+2025-07-27 14:05:23,412|grid_calculator.py|calculate_grid_orders|Grid range: 95000.00 - 105000.00
+2025-07-27 14:05:23,446|grid_calculator.py|calculate_grid_orders|Generated 101 grid orders
+2025-07-27 14:05:23,447|grid_calculator.py|calculate_grid_orders|Initial funds needed - Base: 0.047859, Quote: 4900.00
