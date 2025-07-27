@@ -62,11 +62,18 @@ class TraderBot:
         self.running = True
         logger.info(f"Starting bot {self.bot_name}")
         
-        self.database.save_to_db('grid_orders', {
-            'orders_count': len(self.orders_df),
-            'base_needed': self.base_needed,
-            'quote_needed': self.quote_needed
-        }, self.bot_name)
+        for index, order_row in self.orders_df.iterrows():
+            order_data = {
+                'order_index': index,
+                'base_balance': order_row['base_balance'],
+                'quote_balance': order_row['quote_balance'],
+                'price': order_row['price'],
+                'order_size_base': order_row['order_size_base'],
+                'order_size_quote': order_row['order_size_quote'],
+                'base_needed_total': self.base_needed,
+                'quote_needed_total': self.quote_needed
+            }
+            self.database.save_to_db('grid_orders', order_data, self.bot_name)
         
         try:
             while self.running:
