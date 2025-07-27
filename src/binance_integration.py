@@ -142,7 +142,7 @@ class BinanceIntegration:
         return 0.01
 
     def place_order(self, symbol: str, side: str, order_type: str, quantity: float, 
-                   price: float = None, time_in_force: str = "GTC") -> Dict[str, Any]:
+                   price: float = None, time_in_force: str = "GTC", post_only: bool = True) -> Dict[str, Any]:
         params = {
             "symbol": symbol,
             "side": side,
@@ -153,6 +153,9 @@ class BinanceIntegration:
         
         if price is not None:
             params["price"] = price
+        
+        if post_only and order_type == "LIMIT":
+            params["timeInForce"] = "GTX"
         
         if not self.test_mode:
             params["newOrderRespType"] = "FULL"
