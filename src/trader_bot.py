@@ -47,6 +47,7 @@ class TraderBot:
         self.sell_trades = 0
         self.realized_pnl = 0.0
         self.last_pnl_check = datetime.utcnow()
+        self.last_price = None
         
         logger.info(f"Initialized TraderBot: {self.bot_name}")
 
@@ -106,7 +107,11 @@ class TraderBot:
             current_balances = self._get_current_balances()
             current_price = self._get_current_price()
             
+            if self.test_mode:
+                self._simulate_order_execution(current_price)
+            
             self._check_boundary_crossing(current_price)
+            self._handle_squeeze_orders(current_price)
             self._manage_grid_orders(current_balances, current_price)
             
             if datetime.utcnow() - self.last_pnl_check >= timedelta(minutes=1):
@@ -181,7 +186,14 @@ class TraderBot:
         self._place_missing_orders(sell_orders, 'SELL', current_price)
 
     def _place_missing_orders(self, orders: pd.DataFrame, side: str, current_price: float):
-        for _, order in orders.iterrows():
+        if orders.empty:
+            return
+            
+        orders_sorted = orders.copy()
+        orders_sorted['distance_from_price'] = abs(orders_sorted['price'] - current_price)
+        orders_sorted = orders_sorted.sort_values('distance_from_price', ascending=False)
+        
+        for _, order in orders_sorted.iterrows():
             order_price = order['price']
             order_size = order['order_size_base']
             
@@ -224,7 +236,8 @@ class TraderBot:
                     order_type='LIMIT',
                     quantity=quantity,
                     price=price,
-                    time_in_force='GTC'
+                    time_in_force='GTC',
+                    post_only=True
                 )
                 self.open_orders.append(order)
                 if side == 'BUY':
@@ -365,3 +378,60 @@ class TraderBot:
             'total_trades': self.buy_trades + self.sell_trades,
             'running_time_hours': (datetime.utcnow() - self.start_time).total_seconds() / 3600
         }, self.bot_name)
+
+    def _simulate_order_execution(self, current_price: float):
+        """Simulate order execution in test mode by checking if any open orders would be filled"""
+        orders_to_remove = []
+        
+        for i, order in enumerate(self.open_orders):
+            order_price = order['price']
+            order_side = order['side']
+            
+            should_execute = False
+            if order_side == 'BUY' and current_price <= order_price:
+                should_execute = True
+            elif order_side == 'SELL' and current_price >= order_price:
+                should_execute = True
+            
+            if should_execute:
+                quantity = order['quantity']
+                
+                if order_side == 'BUY':
+                    self.realized_pnl -= quantity * order_price
+                else:
+                    self.realized_pnl += quantity * order_price
+                
+                logger.info(f"Simulated order execution: {order_side} {quantity} at {order_price}")
+                orders_to_remove.append(i)
+        
+        for i in reversed(orders_to_remove):
+            self.open_orders.pop(i)
+
+    def _handle_squeeze_orders(self, current_price: float):
+        """Handle squeeze orders during rapid price movements"""
+        if self.last_price is None:
+            self.last_price = current_price
+            return
+        
+        price_change_percent = abs(current_price - self.last_price) / self.last_price * 100
+        
+        squeeze_threshold = 2.0
+        
+        if price_change_percent > squeeze_threshold:
+            logger.warning(f"Squeeze detected: Price moved {price_change_percent:.2f}% from {self.last_price} to {current_price}")
+            
+            orders_to_cancel = []
+            max_distance_percent = 5.0
+            
+            for i, order in enumerate(self.open_orders):
+                order_price = order['price']
+                distance_percent = abs(order_price - current_price) / current_price * 100
+                
+                if distance_percent > max_distance_percent:
+                    orders_to_cancel.append(i)
+                    logger.info(f"Cancelling squeeze order: {order['side']} at {order_price} (too far from current price)")
+            
+            for i in reversed(orders_to_cancel):
+                self.open_orders.pop(i)
+        
+        self.last_price = current_price
