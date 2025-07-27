@@ -32,8 +32,8 @@ class TraderBot:
         
         self.database = SimulativeDatabase()
         
-        price_tick = self.binance.get_price_tick(config['spot_market'])
-        self.grid_calculator = GridCalculator(config, price_tick)
+        spot_price_tick = self.binance.get_price_tick(config['spot_market'])
+        self.grid_calculator = GridCalculator(config, spot_price_tick)
         
         self.orders_df, self.base_needed, self.quote_needed = self.grid_calculator.calculate_grid_orders()
         
