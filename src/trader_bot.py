@@ -43,7 +43,8 @@ class TraderBot:
         }
         
         self.open_orders = []
-        self.total_trades = 0
+        self.buy_trades = 0
+        self.sell_trades = 0
         self.realized_pnl = 0.0
         self.last_pnl_check = datetime.utcnow()
         
@@ -169,6 +170,10 @@ class TraderBot:
                     'status': 'NEW'
                 }
                 self.open_orders.append(order)
+                if side == 'BUY':
+                    self.buy_trades += 1
+                else:
+                    self.sell_trades += 1
                 logger.info(f"Simulated order placed: {side} {quantity} at {price}")
             else:
                 order = self.binance.place_order(
@@ -180,6 +185,10 @@ class TraderBot:
                     time_in_force='GTC'
                 )
                 self.open_orders.append(order)
+                if side == 'BUY':
+                    self.buy_trades += 1
+                else:
+                    self.sell_trades += 1
                 logger.info(f"Order placed: {order}")
                 
         except Exception as e:
@@ -199,7 +208,9 @@ class TraderBot:
         self.database.save_to_db('spot_stats', {
             'realized_pnl': self.realized_pnl,
             'unrealized_pnl': spot_pnl,
-            'total_trades': self.total_trades
+            'buy_trades': self.buy_trades,
+            'sell_trades': self.sell_trades,
+            'total_trades': self.buy_trades + self.sell_trades
         }, self.bot_name)
         
         self.database.save_to_db('options_stats', {
@@ -298,6 +309,8 @@ class TraderBot:
         
         self.database.save_to_db('bot_shutdown', {
             'final_pnl': final_pnl,
-            'total_trades': self.total_trades,
+            'buy_trades': self.buy_trades,
+            'sell_trades': self.sell_trades,
+            'total_trades': self.buy_trades + self.sell_trades,
             'running_time_hours': (datetime.utcnow() - self.start_time).total_seconds() / 3600
         }, self.bot_name)
