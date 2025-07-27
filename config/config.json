@@ -1,9 +1,9 @@
 {
     "trading_mode": "test",
-    "binance_api_key": "",
-    "binance_api_secret": "",
-    "deribit_api_key": "",
-    "deribit_api_secret": "",
+    "binance_api_key": "YOUR_BINANCE_API_KEY_FOR_LIVE_MODE",
+    "binance_api_secret": "YOUR_BINANCE_API_SECRET_FOR_LIVE_MODE",
+    "deribit_api_key": "YOUR_DERIBIT_API_KEY_FOR_LIVE_MODE",
+    "deribit_api_secret": "YOUR_DERIBIT_API_SECRET_FOR_LIVE_MODE",
     "daily_roi_target_for_exit": 0.05,
     "call_option_name": "BTC-25JUL25-110000-C",
     "call_option_size_base": 0.1,

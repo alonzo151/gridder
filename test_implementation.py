@@ -12,7 +12,7 @@ def test_implementation():
     
     try:
         validator = ConfigValidator()
-        config = validator.validate_config('config/test_config.json')
+        config = validator.validate_config('config/config.json')
         print('✓ Configuration validation passed')
     except Exception as e:
         print(f'✗ Configuration validation failed: {e}')

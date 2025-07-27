@@ -42,17 +42,17 @@ pip install -r requirements.txt
 
 The system uses JSON configuration files. Two modes are supported:
 
-### Test Mode Configuration
-Use `config/test_config.json` for safe testing without real trading:
-- No API keys required
+### Configuration
+The system uses a single configuration file `config/config.json` that supports both test and live modes:
+
+**Test Mode** (`"trading_mode": "test"`):
+- API keys can be placeholder values (not used for trading)
 - Simulates order placement and balance changes
 - Uses real price data from exchanges
 - Safe for development and testing
 
-### Live Mode Configuration
-Copy `config/live_config_template.json` and add your API credentials:
-- Requires valid Binance API keys
-- Requires valid Deribit API keys
+**Live Mode** (`"trading_mode": "live"`):
+- Requires valid Binance and Deribit API keys
 - Executes real trades with real money
 - Use with extreme caution
 
@@ -72,17 +72,19 @@ Copy `config/live_config_template.json` and add your API credentials:
 
 ### Validate Configuration
 ```bash
-python main.py config/test_config.json --validate-only
+python main.py config/config.json --validate-only
 ```
 
 ### Run in Test Mode
+Set `"trading_mode": "test"` in config/config.json, then:
 ```bash
-python main.py config/test_config.json
+python main.py config/config.json
 ```
 
 ### Run in Live Mode (Use with caution!)
+Set `"trading_mode": "live"` and add your API credentials to config/config.json, then:
 ```bash
-python main.py config/live_config.json
+python main.py config/config.json
 ```
 
 ## Safety Features
@@ -127,8 +129,7 @@ gridder/
 ├── main.py                 # Application entry point
 ├── requirements.txt        # Python dependencies
 ├── config/                 # Configuration files
-│   ├── test_config.json   # Test mode configuration
-│   └── live_config_template.json
+│   └── config.json        # Single configuration file (test/live modes)
 ├── src/                    # Source code
 │   ├── trader_bot.py      # Main trading bot
 │   ├── grid_calculator.py # Grid order calculation
@@ -144,7 +145,7 @@ gridder/
 ### Testing
 Run the system in test mode to verify functionality:
 ```bash
-python main.py config/test_config.json
+python main.py config/config.json
 ```
 
 ## License
