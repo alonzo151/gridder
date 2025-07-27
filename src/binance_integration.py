@@ -112,34 +112,55 @@ class BinanceIntegration:
         return balances
 
     def get_orderbook(self, symbol: str) -> Dict[str, Any]:
-        params = {"symbol": symbol}
-        response = self._make_request('GET', '/api/v3/ticker/bookTicker', params)
-        
-        orderbook = {
-            "symbol": response["symbol"],
-            "bid_price": float(response["bidPrice"]),
-            "bid_qty": float(response["bidQty"]),
-            "ask_price": float(response["askPrice"]),
-            "ask_qty": float(response["askQty"])
-        }
-        
-        logger.debug(f"Orderbook for {symbol}: {orderbook}")
-        return orderbook
+        try:
+            params = {"symbol": symbol}
+            response = self._make_request('GET', '/api/v3/ticker/bookTicker', params)
+            
+            orderbook = {
+                "symbol": response["symbol"],
+                "bid_price": float(response["bidPrice"]),
+                "bid_qty": float(response["bidQty"]),
+                "ask_price": float(response["askPrice"]),
+                "ask_qty": float(response["askQty"])
+            }
+            
+            logger.debug(f"Orderbook for {symbol}: {orderbook}")
+            return orderbook
+        except Exception as e:
+            if self.test_mode:
+                fallback_price = 100000.0
+                logger.warning(f"Failed to get orderbook for {symbol} in test mode, using fallback price {fallback_price}: {e}")
+                return {
+                    "symbol": symbol,
+                    "bid_price": fallback_price * 0.999,
+                    "bid_qty": 1.0,
+                    "ask_price": fallback_price * 1.001,
+                    "ask_qty": 1.0
+                }
+            else:
+                raise
 
     def get_price_tick(self, symbol: str) -> float:
-        params = {"symbol": symbol}
-        response = self._make_request('GET', '/api/v3/exchangeInfo', params)
-        
-        for symbol_info in response.get('symbols', []):
-            if symbol_info['symbol'] == symbol:
-                for filter_info in symbol_info.get('filters', []):
-                    if filter_info['filterType'] == 'PRICE_FILTER':
-                        tick_size = float(filter_info['tickSize'])
-                        logger.debug(f"Price tick for {symbol}: {tick_size}")
-                        return tick_size
-        
-        logger.warning(f"Price tick not found for {symbol}, using default 0.01")
-        return 0.01
+        try:
+            params = {"symbol": symbol}
+            response = self._make_request('GET', '/api/v3/exchangeInfo', params)
+            
+            for symbol_info in response.get('symbols', []):
+                if symbol_info['symbol'] == symbol:
+                    for filter_info in symbol_info.get('filters', []):
+                        if filter_info['filterType'] == 'PRICE_FILTER':
+                            tick_size = float(filter_info['tickSize'])
+                            logger.debug(f"Price tick for {symbol}: {tick_size}")
+                            return tick_size
+            
+            logger.warning(f"Price tick not found for {symbol}, using default 0.01")
+            return 0.01
+        except Exception as e:
+            if self.test_mode:
+                logger.warning(f"Failed to get price tick for {symbol} in test mode, using default 0.01: {e}")
+                return 0.01
+            else:
+                raise
 
     def place_order(self, symbol: str, side: str, order_type: str, quantity: float, 
                    price: float = None, time_in_force: str = "GTC", post_only: bool = True) -> Dict[str, Any]:

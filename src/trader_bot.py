@@ -107,6 +107,8 @@ class TraderBot:
             current_balances = self._get_current_balances()
             current_price = self._get_current_price()
             
+            self.cached_price_tick = self.binance.get_price_tick(self.config['spot_market'])
+            
             if self.test_mode:
                 self._simulate_order_execution(current_price)
             
@@ -154,8 +156,12 @@ class TraderBot:
         }
 
     def _get_current_price(self) -> float:
-        orderbook = self.binance.get_orderbook(self.config['spot_market'])
-        return (orderbook['bid_price'] + orderbook['ask_price']) / 2
+        try:
+            orderbook = self.binance.get_orderbook(self.config['spot_market'])
+            return (orderbook['bid_price'] + orderbook['ask_price']) / 2
+        except Exception as e:
+            logger.warning(f"Failed to get current price, using entry price: {e}")
+            return self.config['spot_entry_price']
     
     def _get_current_market_price(self) -> float:
         """Get current market price - separate method to avoid circular dependency in simulated balance calculation"""
@@ -206,8 +212,9 @@ class TraderBot:
         if side == 'SELL' and order_price <= current_price:
             return False
         
+        price_tick = getattr(self, 'cached_price_tick', 0.01)
         for existing_order in self.open_orders:
-            if abs(existing_order['price'] - order_price) < self.binance.get_price_tick(self.config['spot_market']):
+            if abs(existing_order['price'] - order_price) < price_tick:
                 return False
         
         return True
@@ -446,7 +453,7 @@ class TraderBot:
             return
         
         squeeze_distance_percent = 2.0  # Place orders 2% away from current price
-        price_tick = self.binance.get_price_tick(self.config['spot_market'])
+        price_tick = getattr(self, 'cached_price_tick', 0.01)
         
         for cancelled_order in cancelled_orders:
             side = cancelled_order['side']
