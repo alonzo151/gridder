@@ -196,8 +196,8 @@ class TraderBot:
 
     def _check_pnl(self):
         spot_pnl = self._calculate_spot_pnl()
-        options_pnl = self._calculate_options_pnl()
-        total_pnl = spot_pnl + options_pnl
+        options_data = self._calculate_options_pnl()
+        total_pnl = spot_pnl + options_data['total_pnl']
         
         running_days = max(1, (datetime.utcnow() - self.start_time).days)
         daily_pnl = total_pnl / running_days
@@ -214,12 +214,13 @@ class TraderBot:
         }, self.bot_name)
         
         self.database.save_to_db('options_stats', {
-            'call_unrealized_pnl': options_pnl / 2,
-            'put_unrealized_pnl': options_pnl / 2,
-            'total_options_pnl': options_pnl
+            'call_unrealized_pnl': options_data['call_pnl'],
+            'put_unrealized_pnl': options_data['put_pnl'],
+            'total_options_pnl': options_data['total_pnl']
         }, self.bot_name)
         
-        logger.info(f"PnL Check - Spot: {spot_pnl:.2f}, Options: {options_pnl:.2f}, Total: {total_pnl:.2f}")
+        logger.info(f"PnL Check - Spot: {spot_pnl:.2f}, Options: {options_data['total_pnl']:.2f}, Total: {total_pnl:.2f}")
+        logger.info(f"Call PnL: {options_data['call_pnl']:.2f}, Put PnL: {options_data['put_pnl']:.2f}")
         logger.info(f"Daily ROI: {daily_roi:.4f} ({daily_roi*100:.2f}%)")
         
         if daily_roi >= self.config['daily_roi_target_for_exit']:
@@ -238,7 +239,7 @@ class TraderBot:
         
         return current_value - initial_value + self.realized_pnl
 
-    def _calculate_options_pnl(self) -> float:
+    def _calculate_options_pnl(self) -> Dict[str, float]:
         try:
             call_price = self.deribit.price_for_volume(
                 self.config['call_option_name'],
@@ -255,11 +256,19 @@ class TraderBot:
             call_pnl = (call_price - self.config['call_option_initial_cost_base']) * self.config['call_option_size_base']
             put_pnl = (put_price - self.config['put_option_initial_cost_base']) * self.config['put_option_size_base']
             
-            return call_pnl + put_pnl
+            return {
+                'call_pnl': call_pnl,
+                'put_pnl': put_pnl,
+                'total_pnl': call_pnl + put_pnl
+            }
             
         except Exception as e:
             logger.error(f"Failed to calculate options PnL: {e}")
-            return 0.0
+            return {
+                'call_pnl': 0.0,
+                'put_pnl': 0.0,
+                'total_pnl': 0.0
+            }
 
     def _enter_take_profit_mode(self):
         logger.info("Entering take profit mode")
@@ -300,8 +309,8 @@ class TraderBot:
 
     def _calculate_final_pnl(self) -> float:
         spot_pnl = self._calculate_spot_pnl()
-        options_pnl = self._calculate_options_pnl()
-        return spot_pnl + options_pnl
+        options_data = self._calculate_options_pnl()
+        return spot_pnl + options_data['total_pnl']
 
     def _shutdown(self):
         logger.info(f"Shutting down bot {self.bot_name}")
