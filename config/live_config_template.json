@@ -1,0 +1,22 @@
+{
+    "trading_mode": "live",
+    "binance_api_key": "YOUR_BINANCE_API_KEY",
+    "binance_api_secret": "YOUR_BINANCE_API_SECRET",
+    "deribit_api_key": "YOUR_DERIBIT_API_KEY",
+    "deribit_api_secret": "YOUR_DERIBIT_API_SECRET",
+    "daily_roi_target_for_exit": 0.05,
+    "call_option_name": "BTC-25JUL25-110000-C",
+    "call_option_size_base": 0.1,
+    "call_option_initial_cost_base": 1500.0,
+    "put_option_name": "BTC-25JUL25-90000-P",
+    "put_option_initial_cost_base": 1500.0,
+    "put_option_size_base": 0.1,
+    "grid_max_open_orders": 10,
+    "grid_mode_loop_sleep": 5.0,
+    "spot_entry_price": 100000.0,
+    "spot_down_range_percent": 5.0,
+    "spot_up_range_percent": 5.0,
+    "spot_order_size_quote": 100.0,
+    "spot_orders_diff_percent": 0.1,
+    "spot_market": "BTCFDUSD"
+}

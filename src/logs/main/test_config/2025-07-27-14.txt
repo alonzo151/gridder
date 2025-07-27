@@ -1,0 +1,2 @@
+2025-07-27 14:04:57,348|config_validator.py|validate_config|Configuration validation passed
+2025-07-27 14:04:57,349|main.py|main|Configuration validation successful
