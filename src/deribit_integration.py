@@ -30,29 +30,7 @@ class DeribitIntegration:
             
         except requests.exceptions.RequestException as e:
             logger.error(f"Deribit API request failed: {e}")
-            if self.test_mode:
-                logger.warning("Falling back to simulated data in test mode")
-                return self._simulate_response(method, params)
             raise
-
-    def _simulate_response(self, method: str, params: Dict[str, Any] = None) -> Dict[str, Any]:
-        if method == "get_order_book":
-            instrument_name = params.get("instrument_name", "BTC-PERPETUAL")
-            return {
-                "bids": [[99400.0, 0.1], [99300.0, 0.2]],
-                "asks": [[99500.0, 0.1], [99600.0, 0.2]],
-                "instrument_name": instrument_name,
-                "timestamp": int(time.time() * 1000)
-            }
-        elif method == "ticker":
-            return {
-                "best_bid_price": 99400.0,
-                "best_ask_price": 99500.0,
-                "mark_price": 99450.0,
-                "last_price": 99450.0
-            }
-        else:
-            return {}
 
     def get_option_orderbook(self, instrument_name: str) -> Dict[str, Any]:
         params = {"instrument_name": instrument_name}
