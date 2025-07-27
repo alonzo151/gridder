@@ -118,13 +118,48 @@ class TraderBot:
 
     def _get_current_balances(self) -> Dict[str, float]:
         if self.test_mode:
-            return self.simulated_balances.copy()
+            return self._calculate_simulated_balances()
         else:
             return self.binance.get_account_balance()
+    
+    def _calculate_simulated_balances(self) -> Dict[str, float]:
+        """Calculate dynamic balances based on current price and grid orders that would have been executed"""
+        current_price = self._get_current_market_price()
+        
+        btc_balance = self.base_needed
+        fdusd_balance = self.quote_needed
+        
+        for _, order in self.orders_df.iterrows():
+            order_price = order['price']
+            order_size_base = order['order_size_base']
+            order_size_quote = order['order_size_quote']
+            
+            if current_price > order_price:
+                if order['base_balance'] < self.base_needed:  # This indicates it's a buy order
+                    btc_balance += order_size_base
+                    fdusd_balance -= order_size_quote
+            else:
+                if order['base_balance'] > 0:  # This indicates it's a sell order
+                    btc_balance -= order_size_base
+                    fdusd_balance += order_size_quote
+        
+        return {
+            'BTC': max(0, btc_balance),  # Ensure non-negative
+            'FDUSD': max(0, fdusd_balance)  # Ensure non-negative
+        }
 
     def _get_current_price(self) -> float:
         orderbook = self.binance.get_orderbook(self.config['spot_market'])
         return (orderbook['bid_price'] + orderbook['ask_price']) / 2
+    
+    def _get_current_market_price(self) -> float:
+        """Get current market price - separate method to avoid circular dependency in simulated balance calculation"""
+        try:
+            orderbook = self.binance.get_orderbook(self.config['spot_market'])
+            return (orderbook['bid_price'] + orderbook['ask_price']) / 2
+        except Exception as e:
+            logger.warning(f"Failed to get current market price, using entry price: {e}")
+            return self.config['spot_entry_price']
 
     def _check_boundary_crossing(self, current_price: float):
         min_price = self.orders_df['price'].min()
