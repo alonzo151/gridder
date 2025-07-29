@@ -53,23 +53,36 @@ class UIDataReader:
             spot_df['timestamp'] = pd.to_datetime(spot_df['timestamp'])
             options_df['timestamp'] = pd.to_datetime(options_df['timestamp'])
             
-            merged_df = pd.merge(spot_df[['timestamp', 'unrealized_pnl', 'bot_name']], 
-                               options_df[['timestamp', 'total_options_pnl', 'bot_name']], 
-                               on=['timestamp', 'bot_name'], how='outer')
+            merged_df = pd.merge_asof(
+                spot_df[['timestamp', 'unrealized_pnl', 'bot_name']].sort_values('timestamp'),
+                options_df[['timestamp', 'total_options_pnl', 'bot_name']].sort_values('timestamp'),
+                on='timestamp', 
+                by='bot_name', 
+                direction='nearest',
+                tolerance=pd.Timedelta(seconds=1)
+            )
             
             merged_df['unrealized_pnl'] = merged_df['unrealized_pnl'].fillna(0)
             merged_df['total_options_pnl'] = merged_df['total_options_pnl'].fillna(0)
             merged_df['total_unrealized_pnl'] = merged_df['unrealized_pnl'] + merged_df['total_options_pnl']
             
+            merged_df = merged_df.set_index('timestamp')
+            merged_df = merged_df.groupby('bot_name')[['unrealized_pnl', 'total_options_pnl', 'total_unrealized_pnl']].resample('5min').last().reset_index()
+            merged_df = merged_df.dropna(subset=['total_unrealized_pnl'])
+            
             return merged_df[['timestamp', 'total_unrealized_pnl', 'bot_name']].sort_values('timestamp')
         elif not spot_df.empty:
             spot_df['timestamp'] = pd.to_datetime(spot_df['timestamp'])
             spot_df['total_unrealized_pnl'] = spot_df['unrealized_pnl']
-            return spot_df[['timestamp', 'total_unrealized_pnl', 'bot_name']]
+            spot_df = spot_df.set_index('timestamp')
+            spot_df = spot_df.groupby('bot_name')[['total_unrealized_pnl']].resample('5min').last().reset_index()
+            return spot_df[['timestamp', 'total_unrealized_pnl', 'bot_name']].dropna()
         elif not options_df.empty:
             options_df['timestamp'] = pd.to_datetime(options_df['timestamp'])
             options_df['total_unrealized_pnl'] = options_df['total_options_pnl']
-            return options_df[['timestamp', 'total_unrealized_pnl', 'bot_name']]
+            options_df = options_df.set_index('timestamp')
+            options_df = options_df.groupby('bot_name')[['total_unrealized_pnl']].resample('5min').last().reset_index()
+            return options_df[['timestamp', 'total_unrealized_pnl', 'bot_name']].dropna()
         
         return pd.DataFrame(columns=['timestamp', 'total_unrealized_pnl', 'bot_name'])
     
