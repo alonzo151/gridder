@@ -52,6 +52,7 @@ class TraderBot:
         self.last_pnl_check = datetime.utcnow()
         self.last_price = None
         self.last_simulated_balances = None
+        self.last_trade = None
         
         logger.info(f"Initialized TraderBot: {self.bot_name}")
 
@@ -118,9 +119,9 @@ class TraderBot:
             self._check_boundary_crossing(current_mid_price)
             self._manage_grid_orders(current_balances, bid, ask, self.last_simulated_balances, current_open_orders)
             
-            #if datetime.utcnow() - self.last_pnl_check >= timedelta(minutes=1):
-            self._check_pnl()
-            self.last_pnl_check = datetime.utcnow()
+            if datetime.utcnow() - self.last_pnl_check >= timedelta(minutes=1):
+                self._check_pnl()
+                self.last_pnl_check = datetime.utcnow()
             self.last_simulated_balances = current_balances
         except Exception as e:
             logger.error(f"Error in trading loop: {e}")
@@ -181,7 +182,7 @@ class TraderBot:
             current_price_based_on_balance = self.orders_df[self.orders_df['base_balance'] <= btc_balance].iloc[0][
                 'price'] if not self.orders_df.empty else mid_price
             buy_orders, sell_orders = self.grid_calculator.get_orders_for_price_range(
-                self.orders_df, current_price_based_on_balance, self.config['grid_max_open_orders']
+                self.orders_df, current_price_based_on_balance, self.config['grid_max_open_orders'], self.last_trade
             )
 
             # Use client_order_id for open order identification
@@ -201,14 +202,16 @@ class TraderBot:
                             continue
                         self._place_order(side, order['order_size_base'], price_to_send, client_order_id=client_order_id)
                         # Save trade to DB for live mode
-                        self.database.save_to_db('trades', {
+                        trade_data = {
                             'timestamp': datetime.utcnow().isoformat(),
                             'side': side,
                             'price': price_to_send,
                             'quantity': order['order_size_base'],
                             'bot_name': self.bot_name,
                             'mode': 'live'
-                        }, self.bot_name)
+                        }
+                        self.database.save_to_db('trades', trade_data , self.bot_name)
+                        self.last_trade = trade_data
         else:
             # Test mode: compare current to previous BTC balance
             if last_balances is not None:
@@ -218,46 +221,57 @@ class TraderBot:
                 if diff != 0:
                     # Find which orders would have been filled
                     if diff > 0:
-                        # Buy orders filled
-                        filled_orders = self.orders_df[
-                            (self.orders_df['price'] < bid) & (self.orders_df['base_balance'] <= btc_balance)]
-                        for _, order in filled_orders.iterrows():
+                        # find filled orders out from self.open_orders
+                        filled_orders = [o for o in self.open_orders if o['side'] == 'BUY' and o['price'] > bid]
+                        # sort filled orders by price descending
+                        filled_orders.sort(key=lambda x: x['price'], reverse=True)
+                        for order in filled_orders:
                             self.buy_trades += 1
-                            logger.info(f"Buying trade at price {order['price']} with size {order['order_size_base']}")
-                            self.database.save_to_db('trades', {
+                            trade_data = {
                                 'timestamp': datetime.utcnow().isoformat(),
                                 'side': 'BUY',
                                 'price': order['price'],
-                                'quantity': order['order_size_base'],
+                                'quantity': order['quantity'],
                                 'bot_name': self.bot_name,
                                 'mode': 'test'
-                            }, self.bot_name)
+                            }
+                            logger.info(f"Buying trade at price {order['price']}")
+                            self.database.save_to_db('trades', trade_data, self.bot_name)
+                            # remove the order from open_orders
+                            self.open_orders = [o for o in self.open_orders if o['orderId'] != order['orderId']]
+                            self.last_trade = trade_data
                     else:
                         # Sell orders filled
-                        filled_orders = self.orders_df[
-                            (self.orders_df['price'] > ask) & (self.orders_df['base_balance'] >= btc_balance)]
-                        for _, order in filled_orders.iterrows():
+                        filled_orders = [o for o in self.open_orders if o['side'] == 'SELL' and o['price'] < ask]
+                        # sort filled orders by price ascending
+                        filled_orders.sort(key=lambda x: x['price'])
+                        for order in filled_orders:
                             self.sell_trades += 1
-                            logger.info(f"Selling trade at price {order['price']} with size {order['order_size_base']}")
-                            self.database.save_to_db('trades', {
+                            logger.info(f"Selling trade at price {order['price']}")
+                            trade_data = {
                                 'timestamp': datetime.utcnow().isoformat(),
                                 'side': 'SELL',
                                 'price': order['price'],
-                                'quantity': order['order_size_base'],
+                                'quantity': order['quantity'],
                                 'bot_name': self.bot_name,
                                 'mode': 'test'
-                            }, self.bot_name)
+                            }
+                            self.database.save_to_db('trades', trade_data, self.bot_name)
+                            self.open_orders = [o for o in self.open_orders if o['orderId'] != order['orderId']]
+                            self.last_trade = trade_data
 
             # Place missing orders based on simulated open orders
-            current_price_based_on_balance = self.orders_df[self.orders_df['base_balance'] <= btc_balance].iloc[0][
-                'price'] if not self.orders_df.empty else mid_price
+
             buy_orders, sell_orders = self.grid_calculator.get_orders_for_price_range(
-                self.orders_df, current_price_based_on_balance, self.config['grid_max_open_orders']
+                self.orders_df, mid_price, self.config['grid_max_open_orders']
             )
             open_order_prices = {(o['price'], o['side']) for o in self.open_orders}
             for side, orders in [('BUY', buy_orders), ('SELL', sell_orders)]:
                 for _, order in orders.iterrows():
                     if (order['price'], side) not in open_order_prices:
+                        if self.last_trade and self.last_trade['price'] == order['price']:
+                            logger.debug(f"Skipping order placement for {side} at {order['price']} due to last trade price match")
+                            continue
                         self._place_order(side, order['order_size_base'], order['price'])
 
     def _place_missing_orders(self, orders: pd.DataFrame, side: str, current_price: float):
@@ -291,7 +305,7 @@ class TraderBot:
         try:
             if self.test_mode:
                 order = {
-                    'orderId': len(self.open_orders) + 1,
+                    'orderId': int(time.time() * 1000),
                     'symbol': self.config['spot_market'],
                     'side': side,
                     'quantity': quantity,
@@ -300,10 +314,6 @@ class TraderBot:
                     'client_order_id': client_order_id
                 }
                 self.open_orders.append(order)
-                if side == 'BUY':
-                    self.buy_trades += 1
-                else:
-                    self.sell_trades += 1
                 logger.info(f"Simulated order placed: {side} {quantity} at {price}")
             else:
                 order = self.binance.place_order(

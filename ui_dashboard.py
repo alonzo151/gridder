@@ -12,7 +12,7 @@ from src.logger import setup_logger
 logger = setup_logger()
 
 DEFAULT_PASSWORD = "gridder123"
-DEFAULT_REFRESH_RATE = 30
+DEFAULT_REFRESH_RATE = 5
 
 def check_password():
     """Returns True if the user has entered the correct password."""
