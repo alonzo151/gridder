@@ -152,6 +152,46 @@ python main.py config/config.json
 
 This project is provided under the MIT License. See LICENSE file for details.
 
+## UI Dashboard
+
+The Gridder system includes a web-based dashboard for visualizing trading activity.
+
+### Running the Dashboard
+
+1. Install additional UI dependencies:
+```bash
+pip install -r requirements.txt
+```
+
+2. Run the dashboard:
+```bash
+streamlit run ui_dashboard.py
+```
+
+3. Open your browser to the displayed URL (typically http://localhost:8501)
+
+4. Enter the password: `gridder123`
+
+### Features
+
+- **Trading Chart**: Scatter plot showing buy trades (green) and sell trades (red)
+- **Summary Statistics**: Real-time trading metrics
+- **Configurable Refresh**: Adjust auto-refresh rate from 5-300 seconds
+- **Password Protection**: Secure access to trading data
+- **Bot Selection**: Filter data by specific bot instances
+
+The dashboard reads data from the `data/` folder and will automatically update as new trades are executed.
+
+### Testing with Sample Data
+
+To test the dashboard with sample trading data:
+
+```bash
+python create_sample_data.py
+```
+
+This will create sample trades in the `data/` folder for testing purposes.
+
 ## Disclaimer
 
 This software is for educational and research purposes. Trading cryptocurrencies involves substantial risk of loss. The authors are not responsible for any financial losses incurred through the use of this software.
