@@ -1,3 +1,8 @@
+import sys
+import os
+if __name__ == "__main__":
+    sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
+
 import requests
 import time
 from typing import Dict, Any, List
@@ -10,24 +15,30 @@ class DeribitIntegration:
         self.api_key = api_key
         self.api_secret = api_secret
         self.test_mode = test_mode
-        self.base_url = "https://test.deribit.com" if test_mode else "https://www.deribit.com"
+        self.base_url = "https://www.deribit.com"
         self.session = requests.Session()
         
         logger.info(f"Initialized Deribit integration in {'test' if test_mode else 'live'} mode")
 
     def _make_request(self, method: str, params: Dict[str, Any] = None) -> Dict[str, Any]:
         url = f"{self.base_url}/api/v2/public/{method}"
-        
         try:
             response = self.session.get(url, params=params)
-            response.raise_for_status()
+            try:
+                response.raise_for_status()
+            except requests.exceptions.HTTPError as http_err:
+                logger.error(f"Deribit API HTTP error: {http_err}")
+                logger.error(f"Deribit API response content: {response.text}")
+                if self.test_mode:
+                    logger.warning(f"Deribit API failed in test mode, returning empty result: {http_err}")
+                    return {}
+                raise
             result = response.json()
-            
             if result.get('error'):
+                logger.error(f"Deribit API error in response: {result['error']}")
+                logger.error(f"Full response: {result}")
                 raise Exception(f"Deribit API error: {result['error']}")
-            
             return result.get('result', {})
-            
         except requests.exceptions.RequestException as e:
             logger.error(f"Deribit API request failed: {e}")
             if self.test_mode:
@@ -97,3 +108,29 @@ class DeribitIntegration:
                 return fallback_price
             else:
                 raise
+
+    def list_instruments(self, currency: str = "BTC", kind: str = "option") -> list:
+        """List available instruments for a given currency and kind (option/future/perpetual)"""
+        params = {"currency": currency, "kind": kind, "expired": "false"}
+        result = self._make_request("get_instruments", params)
+        instruments = result if isinstance(result, list) else []
+        logger.info(f"Found {len(instruments)} instruments for {currency} {kind}")
+        return instruments
+
+
+# python src/deribit_integration.py --list --currency BTC --kind option --test
+# if __name__ == "__main__":
+#     import argparse
+#     parser = argparse.ArgumentParser(description="Deribit Integration Utility")
+#     parser.add_argument('--list', action='store_true', help='List available BTC option instruments')
+#     parser.add_argument('--currency', type=str, default='BTC', help='Currency (default: BTC)')
+#     parser.add_argument('--kind', type=str, default='option', help='Instrument kind (option/future/perpetual)')
+#     parser.add_argument('--test', action='store_true', help='Use testnet')
+#     args = parser.parse_args()
+#
+#     deribit = DeribitIntegration(test_mode=args.test)
+#     if args.list:
+#         instruments = deribit.list_instruments(currency=args.currency, kind=args.kind)
+#         for inst in instruments:
+#             print(inst['instrument_name'])
+#

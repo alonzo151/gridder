@@ -78,7 +78,6 @@ class GridCalculator:
         orders_df['base_balance'] = 0.0
         orders_df['quote_balance'] = 0.0
         
-        
         cumulative_base = 0.0
         for i in range(len(orders_df) - 1, -1, -1):  # Start from highest price
             orders_df.iloc[i, orders_df.columns.get_loc('base_balance')] = cumulative_base
@@ -96,13 +95,9 @@ class GridCalculator:
         return price_differences.idxmin()
 
     def _calculate_initial_funds(self, orders_df: pd.DataFrame, entry_index: int) -> Tuple[float, float]:
-        """Calculate total funds needed based on max balances (no negative balances allowed)"""
-        max_base_needed = orders_df['base_balance'].max()
-        max_quote_needed = orders_df['quote_balance'].max()
-        
-        base_needed = max_base_needed
-        quote_needed = max_quote_needed
-        
+        """Calculate total funds needed based on balances at entry price (init price)"""
+        base_needed = orders_df.iloc[entry_index]['base_balance']
+        quote_needed = orders_df.iloc[entry_index]['quote_balance']
         return base_needed, quote_needed
 
     def get_orders_for_price_range(self, orders_df: pd.DataFrame, current_price: float, 

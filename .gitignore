@@ -2,6 +2,9 @@
 __pycache__/
 *.py[codz]
 *$py.class
+src/logs
+data
+config/config_local.json
 
 # C extensions
 *.so
