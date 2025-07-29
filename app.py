@@ -102,5 +102,81 @@ def api_stats():
         logger.error(f"Error getting stats: {e}")
         return jsonify({'error': 'Failed to load stats'}), 500
 
+@app.route('/api/options-pnl')
+def api_options_pnl():
+    if not require_auth():
+        return jsonify({'error': 'Unauthorized'}), 401
+    
+    try:
+        bot_name = request.args.get('bot_name')
+        if bot_name == '':
+            bot_name = None
+        
+        options_df = data_reader.get_options_pnl_data(bot_name)
+        
+        data = []
+        for _, row in options_df.iterrows():
+            data.append({
+                'timestamp': row['timestamp'].isoformat(),
+                'call_unrealized_pnl': float(row['call_unrealized_pnl']),
+                'put_unrealized_pnl': float(row['put_unrealized_pnl']),
+                'bot_name': row['bot_name']
+            })
+        
+        return jsonify({'data': data})
+    except Exception as e:
+        logger.error(f"Error getting options PnL: {e}")
+        return jsonify({'error': 'Failed to load options PnL'}), 500
+
+@app.route('/api/total-pnl')
+def api_total_pnl():
+    if not require_auth():
+        return jsonify({'error': 'Unauthorized'}), 401
+    
+    try:
+        bot_name = request.args.get('bot_name')
+        if bot_name == '':
+            bot_name = None
+        
+        total_pnl_df = data_reader.get_total_unrealized_pnl_data(bot_name)
+        
+        data = []
+        for _, row in total_pnl_df.iterrows():
+            data.append({
+                'timestamp': row['timestamp'].isoformat(),
+                'total_unrealized_pnl': float(row['total_unrealized_pnl']),
+                'bot_name': row['bot_name']
+            })
+        
+        return jsonify({'data': data})
+    except Exception as e:
+        logger.error(f"Error getting total PnL: {e}")
+        return jsonify({'error': 'Failed to load total PnL'}), 500
+
+@app.route('/api/price-data')
+def api_price_data():
+    if not require_auth():
+        return jsonify({'error': 'Unauthorized'}), 401
+    
+    try:
+        bot_name = request.args.get('bot_name')
+        if bot_name == '':
+            bot_name = None
+        
+        price_df = data_reader.get_price_data(bot_name)
+        
+        data = []
+        for _, row in price_df.iterrows():
+            data.append({
+                'timestamp': row['timestamp'].isoformat(),
+                'price': float(row['price']),
+                'bot_name': row['bot_name']
+            })
+        
+        return jsonify({'data': data})
+    except Exception as e:
+        logger.error(f"Error getting price data: {e}")
+        return jsonify({'error': 'Failed to load price data'}), 500
+
 if __name__ == '__main__':
-    app.run(debug=True, host='0.0.0.0', port=5001)
+    app.run(debug=True, host='0.0.0.0', port=5000)

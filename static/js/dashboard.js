@@ -69,7 +69,10 @@ class GridderDashboard {
         try {
             await Promise.all([
                 this.loadTradesData(),
-                this.loadStatsData()
+                this.loadStatsData(),
+                this.loadOptionsPnlData(),
+                this.loadTotalPnlData(),
+                this.loadPriceData()
             ]);
             
             this.updateLastUpdatedTime();
@@ -86,7 +89,6 @@ class GridderDashboard {
             
             if (data.trades) {
                 this.updateTradingChart(data.trades);
-                this.updateRecentTradesTable(data.trades);
             }
         } catch (error) {
             console.error('Error loading trades data:', error);
@@ -181,30 +183,146 @@ class GridderDashboard {
         Plotly.newPlot('trading-chart', traces, layout, config);
     }
 
-    updateRecentTradesTable(trades) {
-        const tbody = document.getElementById('recent-trades-body');
-        
-        if (!trades || trades.length === 0) {
-            tbody.innerHTML = '<tr><td colspan="5" class="no-data">No trades data available</td></tr>';
+    async loadOptionsPnlData() {
+        try {
+            const url = this.selectedBot ? `/api/options-pnl?bot_name=${encodeURIComponent(this.selectedBot)}` : '/api/options-pnl';
+            const response = await fetch(url);
+            const data = await response.json();
+            
+            if (data.data) {
+                this.updateOptionsPnlChart(data.data);
+            }
+        } catch (error) {
+            console.error('Error loading options PnL data:', error);
+        }
+    }
+
+    async loadTotalPnlData() {
+        try {
+            const url = this.selectedBot ? `/api/total-pnl?bot_name=${encodeURIComponent(this.selectedBot)}` : '/api/total-pnl';
+            const response = await fetch(url);
+            const data = await response.json();
+            
+            if (data.data) {
+                this.updateTotalPnlChart(data.data);
+            }
+        } catch (error) {
+            console.error('Error loading total PnL data:', error);
+        }
+    }
+
+    async loadPriceData() {
+        try {
+            const url = this.selectedBot ? `/api/price-data?bot_name=${encodeURIComponent(this.selectedBot)}` : '/api/price-data';
+            const response = await fetch(url);
+            const data = await response.json();
+            
+            if (data.data) {
+                this.updatePriceChart(data.data);
+            }
+        } catch (error) {
+            console.error('Error loading price data:', error);
+        }
+    }
+
+    updateOptionsPnlChart(data) {
+        if (!data || data.length === 0) {
+            const chartDiv = document.getElementById('options-pnl-chart');
+            chartDiv.innerHTML = '<div style="text-align: center; padding: 2rem; color: #999;">No options PnL data available yet.</div>';
             return;
         }
 
-        const recentTrades = trades.slice(-10).reverse();
-        
-        tbody.innerHTML = recentTrades.map(trade => {
-            const timestamp = new Date(trade.timestamp).toLocaleString();
-            const sideClass = trade.side === 'BUY' ? 'buy-side' : 'sell-side';
-            
-            return `
-                <tr>
-                    <td>${timestamp}</td>
-                    <td><span class="${sideClass}">${trade.side}</span></td>
-                    <td>$${trade.price.toFixed(2)}</td>
-                    <td>${trade.quantity.toFixed(6)}</td>
-                    <td>${trade.bot_name}</td>
-                </tr>
-            `;
-        }).join('');
+        const traces = [
+            {
+                x: data.map(item => new Date(item.timestamp)),
+                y: data.map(item => item.call_unrealized_pnl),
+                mode: 'lines+markers',
+                marker: { color: 'blue', size: 6 },
+                line: { color: 'blue', width: 2 },
+                name: 'Call Option PnL',
+                hovertemplate: '<b>Call PnL</b><br>Time: %{x}<br>PnL: $%{y:.2f}<extra></extra>'
+            },
+            {
+                x: data.map(item => new Date(item.timestamp)),
+                y: data.map(item => item.put_unrealized_pnl),
+                mode: 'lines+markers',
+                marker: { color: 'orange', size: 6 },
+                line: { color: 'orange', width: 2 },
+                name: 'Put Option PnL',
+                hovertemplate: '<b>Put PnL</b><br>Time: %{x}<br>PnL: $%{y:.2f}<extra></extra>'
+            }
+        ];
+
+        const layout = {
+            title: 'Options PnL Over Time',
+            xaxis: { title: 'Time', type: 'date' },
+            yaxis: { title: 'PnL (FDUSD)' },
+            hovermode: 'closest',
+            showlegend: true,
+            margin: { l: 60, r: 30, t: 60, b: 60 }
+        };
+
+        const config = { responsive: true, displayModeBar: true, modeBarButtonsToRemove: ['pan2d', 'lasso2d', 'select2d'] };
+        Plotly.newPlot('options-pnl-chart', traces, layout, config);
+    }
+
+    updateTotalPnlChart(data) {
+        if (!data || data.length === 0) {
+            const chartDiv = document.getElementById('total-pnl-chart');
+            chartDiv.innerHTML = '<div style="text-align: center; padding: 2rem; color: #999;">No total PnL data available yet.</div>';
+            return;
+        }
+
+        const traces = [{
+            x: data.map(item => new Date(item.timestamp)),
+            y: data.map(item => item.total_unrealized_pnl),
+            mode: 'lines+markers',
+            marker: { color: 'purple', size: 6 },
+            line: { color: 'purple', width: 2 },
+            name: 'Total Unrealized PnL',
+            hovertemplate: '<b>Total PnL</b><br>Time: %{x}<br>PnL: $%{y:.2f}<extra></extra>'
+        }];
+
+        const layout = {
+            title: 'Total Unrealized PnL Over Time',
+            xaxis: { title: 'Time', type: 'date' },
+            yaxis: { title: 'PnL (FDUSD)' },
+            hovermode: 'closest',
+            showlegend: true,
+            margin: { l: 60, r: 30, t: 60, b: 60 }
+        };
+
+        const config = { responsive: true, displayModeBar: true, modeBarButtonsToRemove: ['pan2d', 'lasso2d', 'select2d'] };
+        Plotly.newPlot('total-pnl-chart', traces, layout, config);
+    }
+
+    updatePriceChart(data) {
+        if (!data || data.length === 0) {
+            const chartDiv = document.getElementById('price-chart');
+            chartDiv.innerHTML = '<div style="text-align: center; padding: 2rem; color: #999;">No price data available yet.</div>';
+            return;
+        }
+
+        const traces = [{
+            x: data.map(item => new Date(item.timestamp)),
+            y: data.map(item => item.price),
+            mode: 'lines',
+            line: { color: 'green', width: 2 },
+            name: 'BTCFDUSD Price',
+            hovertemplate: '<b>BTCFDUSD</b><br>Time: %{x}<br>Price: $%{y:.2f}<extra></extra>'
+        }];
+
+        const layout = {
+            title: 'BTCFDUSD Price Over Time',
+            xaxis: { title: 'Time', type: 'date' },
+            yaxis: { title: 'Price (FDUSD)' },
+            hovermode: 'closest',
+            showlegend: true,
+            margin: { l: 60, r: 30, t: 60, b: 60 }
+        };
+
+        const config = { responsive: true, displayModeBar: true, modeBarButtonsToRemove: ['pan2d', 'lasso2d', 'select2d'] };
+        Plotly.newPlot('price-chart', traces, layout, config);
     }
 
     updateStatsCards(stats) {
