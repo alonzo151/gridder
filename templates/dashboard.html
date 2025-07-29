@@ -44,6 +44,43 @@
             </div>
 
             <div class="controls-section">
+                <h3>Time Filter</h3>
+                <div class="control-group">
+                    <label for="time-filter">Show past hours</label>
+                    <select id="time-filter">
+                        <option value="">All Time</option>
+                        <option value="1">1 Hour</option>
+                        <option value="3">3 Hours</option>
+                        <option value="6" selected>6 Hours</option>
+                        <option value="12">12 Hours</option>
+                        <option value="24">24 Hours</option>
+                    </select>
+                </div>
+            </div>
+
+            <div class="controls-section">
+                <h3>Bot Configuration</h3>
+                <div id="bot-config" class="config-display">
+                    <div class="config-item">
+                        <span class="config-label">Mode:</span>
+                        <span class="config-value" id="config-mode">--</span>
+                    </div>
+                    <div class="config-item">
+                        <span class="config-label">Entry Price:</span>
+                        <span class="config-value" id="config-entry-price">--</span>
+                    </div>
+                    <div class="config-item">
+                        <span class="config-label">Market:</span>
+                        <span class="config-value" id="config-market">--</span>
+                    </div>
+                    <div class="config-item">
+                        <span class="config-label">Grid Orders:</span>
+                        <span class="config-value" id="config-grid-orders">--</span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="controls-section">
                 <div class="last-updated">
                     Last updated: <span id="last-updated-time">--:--:--</span>
                 </div>
@@ -67,8 +104,12 @@
                     <div class="stat-value" id="sell-trades">0</div>
                 </div>
                 <div class="stat-card">
-                    <h3>Unrealized PnL</h3>
+                    <h3>Unrealized PnL Spot</h3>
                     <div class="stat-value" id="unrealized-pnl">$0.00</div>
+                </div>
+                <div class="stat-card">
+                    <h3>Unrealized Total PnL</h3>
+                    <div class="stat-value" id="total-unrealized-pnl">$0.00</div>
                 </div>
             </div>
 

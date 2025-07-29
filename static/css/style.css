@@ -142,6 +142,28 @@ body {
     font-size: 1.1rem;
 }
 
+.config-display {
+    font-size: 0.9rem;
+}
+
+.config-item {
+    display: flex;
+    justify-content: space-between;
+    margin-bottom: 0.5rem;
+    padding: 0.25rem 0;
+    border-bottom: 1px solid #eee;
+}
+
+.config-label {
+    font-weight: 500;
+    color: #666;
+}
+
+.config-value {
+    font-weight: 600;
+    color: #333;
+}
+
 .control-group {
     margin-bottom: 1rem;
 }

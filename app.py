@@ -69,7 +69,11 @@ def api_trades():
         if bot_name == '':
             bot_name = None
         
-        trades_df = data_reader.get_trades_data(bot_name)
+        hours_filter = request.args.get('hours_filter')
+        if hours_filter:
+            hours_filter = int(hours_filter)
+        
+        trades_df = data_reader.get_trades_data(bot_name, hours_filter)
         
         trades = []
         for _, row in trades_df.iterrows():
@@ -112,7 +116,11 @@ def api_options_pnl():
         if bot_name == '':
             bot_name = None
         
-        options_df = data_reader.get_options_pnl_data(bot_name)
+        hours_filter = request.args.get('hours_filter')
+        if hours_filter:
+            hours_filter = int(hours_filter)
+        
+        options_df = data_reader.get_options_pnl_data(bot_name, hours_filter)
         
         data = []
         for _, row in options_df.iterrows():
@@ -138,7 +146,11 @@ def api_total_pnl():
         if bot_name == '':
             bot_name = None
         
-        total_pnl_df = data_reader.get_total_unrealized_pnl_data(bot_name)
+        hours_filter = request.args.get('hours_filter')
+        if hours_filter:
+            hours_filter = int(hours_filter)
+        
+        total_pnl_df = data_reader.get_total_unrealized_pnl_data(bot_name, hours_filter)
         
         data = []
         for _, row in total_pnl_df.iterrows():
@@ -163,7 +175,11 @@ def api_price_data():
         if bot_name == '':
             bot_name = None
         
-        price_df = data_reader.get_price_data(bot_name)
+        hours_filter = request.args.get('hours_filter')
+        if hours_filter:
+            hours_filter = int(hours_filter)
+        
+        price_df = data_reader.get_price_data(bot_name, hours_filter)
         
         data = []
         for _, row in price_df.iterrows():
@@ -177,6 +193,36 @@ def api_price_data():
     except Exception as e:
         logger.error(f"Error getting price data: {e}")
         return jsonify({'error': 'Failed to load price data'}), 500
+
+@app.route('/api/config')
+def api_config():
+    if not require_auth():
+        return jsonify({'error': 'Unauthorized'}), 401
+    
+    try:
+        import json
+        config_path = 'config/config.json'
+        with open(config_path, 'r') as f:
+            config = json.load(f)
+        
+        safe_config = {
+            'trading_mode': config.get('trading_mode'),
+            'spot_entry_price': config.get('spot_entry_price'),
+            'spot_market': config.get('spot_market'),
+            'spot_down_range_percent': config.get('spot_down_range_percent'),
+            'spot_up_range_percent': config.get('spot_up_range_percent'),
+            'spot_order_size_quote': config.get('spot_order_size_quote'),
+            'spot_orders_diff_percent': config.get('spot_orders_diff_percent'),
+            'grid_max_open_orders': config.get('grid_max_open_orders'),
+            'call_option_name': config.get('call_option_name'),
+            'put_option_name': config.get('put_option_name'),
+            'daily_roi_target_for_exit': config.get('daily_roi_target_for_exit')
+        }
+        
+        return jsonify({'config': safe_config})
+    except Exception as e:
+        logger.error(f"Error getting config: {e}")
+        return jsonify({'error': 'Failed to load config'}), 500
 
 if __name__ == '__main__':
     app.run(debug=True, host='0.0.0.0', port=5000)

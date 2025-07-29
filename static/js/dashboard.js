@@ -4,6 +4,7 @@ class GridderDashboard {
         this.autoRefresh = true;
         this.refreshTimer = null;
         this.selectedBot = '';
+        this.timeFilter = 6;
         
         this.initializeControls();
         this.loadInitialData();
@@ -36,10 +37,17 @@ class GridderDashboard {
             this.selectedBot = e.target.value;
             this.refreshData();
         });
+
+        const timeFilterSelect = document.getElementById('time-filter');
+        timeFilterSelect.addEventListener('change', (e) => {
+            this.timeFilter = e.target.value ? parseInt(e.target.value) : null;
+            this.refreshData();
+        });
     }
 
     async loadInitialData() {
         await this.loadBotList();
+        await this.loadBotConfig();
         await this.refreshData();
     }
 
@@ -83,7 +91,12 @@ class GridderDashboard {
 
     async loadTradesData() {
         try {
-            const url = this.selectedBot ? `/api/trades?bot_name=${encodeURIComponent(this.selectedBot)}` : '/api/trades';
+            let url = this.selectedBot ? `/api/trades?bot_name=${encodeURIComponent(this.selectedBot)}` : '/api/trades';
+            
+            if (this.timeFilter) {
+                url += (url.includes('?') ? '&' : '?') + `hours_filter=${this.timeFilter}`;
+            }
+            
             const response = await fetch(url);
             const data = await response.json();
             
@@ -185,7 +198,12 @@ class GridderDashboard {
 
     async loadOptionsPnlData() {
         try {
-            const url = this.selectedBot ? `/api/options-pnl?bot_name=${encodeURIComponent(this.selectedBot)}` : '/api/options-pnl';
+            let url = this.selectedBot ? `/api/options-pnl?bot_name=${encodeURIComponent(this.selectedBot)}` : '/api/options-pnl';
+            
+            if (this.timeFilter) {
+                url += (url.includes('?') ? '&' : '?') + `hours_filter=${this.timeFilter}`;
+            }
+            
             const response = await fetch(url);
             const data = await response.json();
             
@@ -199,7 +217,12 @@ class GridderDashboard {
 
     async loadTotalPnlData() {
         try {
-            const url = this.selectedBot ? `/api/total-pnl?bot_name=${encodeURIComponent(this.selectedBot)}` : '/api/total-pnl';
+            let url = this.selectedBot ? `/api/total-pnl?bot_name=${encodeURIComponent(this.selectedBot)}` : '/api/total-pnl';
+            
+            if (this.timeFilter) {
+                url += (url.includes('?') ? '&' : '?') + `hours_filter=${this.timeFilter}`;
+            }
+            
             const response = await fetch(url);
             const data = await response.json();
             
@@ -213,7 +236,12 @@ class GridderDashboard {
 
     async loadPriceData() {
         try {
-            const url = this.selectedBot ? `/api/price-data?bot_name=${encodeURIComponent(this.selectedBot)}` : '/api/price-data';
+            let url = this.selectedBot ? `/api/price-data?bot_name=${encodeURIComponent(this.selectedBot)}` : '/api/price-data';
+            
+            if (this.timeFilter) {
+                url += (url.includes('?') ? '&' : '?') + `hours_filter=${this.timeFilter}`;
+            }
+            
             const response = await fetch(url);
             const data = await response.json();
             
@@ -330,6 +358,27 @@ class GridderDashboard {
         document.getElementById('buy-trades').textContent = stats.buy_trades || 0;
         document.getElementById('sell-trades').textContent = stats.sell_trades || 0;
         document.getElementById('unrealized-pnl').textContent = `$${(stats.unrealized_pnl || 0).toFixed(2)}`;
+        document.getElementById('total-unrealized-pnl').textContent = `$${(stats.total_unrealized_pnl || 0).toFixed(2)}`;
+    }
+
+    async loadBotConfig() {
+        try {
+            const response = await fetch('/api/config');
+            const data = await response.json();
+            
+            if (data.config) {
+                this.updateBotConfig(data.config);
+            }
+        } catch (error) {
+            console.error('Error loading bot config:', error);
+        }
+    }
+
+    updateBotConfig(config) {
+        document.getElementById('config-mode').textContent = config.trading_mode || '--';
+        document.getElementById('config-entry-price').textContent = config.spot_entry_price ? `$${config.spot_entry_price}` : '--';
+        document.getElementById('config-market').textContent = config.spot_market || '--';
+        document.getElementById('config-grid-orders').textContent = config.grid_max_open_orders || '--';
     }
 
     updateLastUpdatedTime() {
