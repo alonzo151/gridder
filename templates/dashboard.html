@@ -1,0 +1,108 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gridder Trading Dashboard</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    <script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
+</head>
+<body>
+    <div class="dashboard-container">
+        <!-- Header -->
+        <header class="dashboard-header">
+            <h1>📈 Gridder Trading Dashboard</h1>
+            <a href="/logout" class="logout-btn">Logout</a>
+        </header>
+
+        <!-- Controls Sidebar -->
+        <aside class="controls-sidebar">
+            <div class="controls-section">
+                <h3>Dashboard Controls</h3>
+                
+                <div class="control-group">
+                    <label for="refresh-rate">Refresh Rate (seconds)</label>
+                    <input type="range" id="refresh-rate" min="5" max="300" value="30" step="5">
+                    <span id="refresh-rate-value">30</span>
+                </div>
+                
+                <div class="control-group">
+                    <label>
+                        <input type="checkbox" id="auto-refresh" checked>
+                        Auto Refresh
+                    </label>
+                </div>
+                
+                <button id="refresh-now" class="refresh-btn">🔄 Refresh Now</button>
+            </div>
+
+            <div class="controls-section">
+                <h3>Bot Selection</h3>
+                <select id="bot-select">
+                    <option value="">All Bots</option>
+                </select>
+            </div>
+
+            <div class="controls-section">
+                <div class="last-updated">
+                    Last updated: <span id="last-updated-time">--:--:--</span>
+                </div>
+            </div>
+        </aside>
+
+        <!-- Main Content -->
+        <main class="dashboard-main">
+            <!-- Statistics Cards -->
+            <div class="stats-container">
+                <div class="stat-card">
+                    <h3>Total Trades</h3>
+                    <div class="stat-value" id="total-trades">0</div>
+                </div>
+                <div class="stat-card">
+                    <h3>Buy Trades</h3>
+                    <div class="stat-value" id="buy-trades">0</div>
+                </div>
+                <div class="stat-card">
+                    <h3>Sell Trades</h3>
+                    <div class="stat-value" id="sell-trades">0</div>
+                </div>
+                <div class="stat-card">
+                    <h3>Unrealized PnL</h3>
+                    <div class="stat-value" id="unrealized-pnl">$0.00</div>
+                </div>
+            </div>
+
+            <!-- Trading Chart -->
+            <div class="chart-container">
+                <h2>Trading Activity Chart</h2>
+                <div id="trading-chart"></div>
+            </div>
+
+            <!-- Recent Trades Table -->
+            <div class="table-container">
+                <h2>Recent Trades</h2>
+                <div class="table-wrapper">
+                    <table id="recent-trades-table">
+                        <thead>
+                            <tr>
+                                <th>Timestamp</th>
+                                <th>Side</th>
+                                <th>Price</th>
+                                <th>Quantity</th>
+                                <th>Bot Name</th>
+                            </tr>
+                        </thead>
+                        <tbody id="recent-trades-body">
+                            <tr>
+                                <td colspan="5" class="no-data">No trades data available</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <script src="{{ url_for('static', filename='js/dashboard.js') }}"></script>
+</body>
+</html>
