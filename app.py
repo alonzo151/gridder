@@ -66,10 +66,18 @@ def api_trades():
     
     try:
         bot_name = request.args.get('bot_name')
+        bot_run = request.args.get('bot_run')
+        include_all_runs = request.args.get('include_all_runs', 'false').lower() == 'true'
+        hours_filter = request.args.get('hours_filter')
+        
         if bot_name == '':
             bot_name = None
+        if bot_run == '':
+            bot_run = None
+        if hours_filter:
+            hours_filter = int(hours_filter)
         
-        trades_df = data_reader.get_trades_data(bot_name)
+        trades_df = data_reader.get_trades_data(bot_name, bot_run, include_all_runs, hours_filter)
         
         trades = []
         for _, row in trades_df.iterrows():
@@ -78,7 +86,8 @@ def api_trades():
                 'price': float(row['price']),
                 'side': row['side'],
                 'quantity': float(row['quantity']),
-                'bot_name': row['bot_name']
+                'bot_name': row['bot_name'],
+                'bot_run': row.get('bot_run', '')
             })
         
         return jsonify({'trades': trades})
@@ -117,10 +126,18 @@ def api_options_pnl():
     
     try:
         bot_name = request.args.get('bot_name')
+        bot_run = request.args.get('bot_run')
+        include_all_runs = request.args.get('include_all_runs', 'false').lower() == 'true'
+        hours_filter = request.args.get('hours_filter')
+        
         if bot_name == '':
             bot_name = None
+        if bot_run == '':
+            bot_run = None
+        if hours_filter:
+            hours_filter = int(hours_filter)
         
-        options_df = data_reader.get_options_pnl_data(bot_name)
+        options_df = data_reader.get_options_pnl_data(bot_name, bot_run, include_all_runs, hours_filter)
         
         data = []
         for _, row in options_df.iterrows():
@@ -128,7 +145,8 @@ def api_options_pnl():
                 'timestamp': row['timestamp'].isoformat(),
                 'call_unrealized_pnl': float(row['call_unrealized_pnl']),
                 'put_unrealized_pnl': float(row['put_unrealized_pnl']),
-                'bot_name': row['bot_name']
+                'bot_name': row['bot_name'],
+                'bot_run': row.get('bot_run', '')
             })
         
         return jsonify({'data': data})
@@ -143,17 +161,26 @@ def api_total_pnl():
     
     try:
         bot_name = request.args.get('bot_name')
+        bot_run = request.args.get('bot_run')
+        include_all_runs = request.args.get('include_all_runs', 'false').lower() == 'true'
+        hours_filter = request.args.get('hours_filter')
+        
         if bot_name == '':
             bot_name = None
+        if bot_run == '':
+            bot_run = None
+        if hours_filter:
+            hours_filter = int(hours_filter)
         
-        total_pnl_df = data_reader.get_total_unrealized_pnl_data(bot_name)
+        total_pnl_df = data_reader.get_total_unrealized_pnl_data(bot_name, bot_run, include_all_runs, hours_filter)
         
         data = []
         for _, row in total_pnl_df.iterrows():
             data.append({
                 'timestamp': row['timestamp'].isoformat(),
                 'total_unrealized_pnl': float(row['total_unrealized_pnl']),
-                'bot_name': row['bot_name']
+                'bot_name': row['bot_name'],
+                'bot_run': row.get('bot_run', '')
             })
         
         return jsonify({'data': data})
@@ -168,17 +195,26 @@ def api_price_data():
     
     try:
         bot_name = request.args.get('bot_name')
+        bot_run = request.args.get('bot_run')
+        include_all_runs = request.args.get('include_all_runs', 'false').lower() == 'true'
+        hours_filter = request.args.get('hours_filter')
+        
         if bot_name == '':
             bot_name = None
+        if bot_run == '':
+            bot_run = None
+        if hours_filter:
+            hours_filter = int(hours_filter)
         
-        price_df = data_reader.get_price_data(bot_name)
+        price_df = data_reader.get_price_data(bot_name, bot_run, include_all_runs, hours_filter)
         
         data = []
         for _, row in price_df.iterrows():
             data.append({
                 'timestamp': row['timestamp'].isoformat(),
                 'price': float(row['price']),
-                'bot_name': row['bot_name']
+                'bot_name': row['bot_name'],
+                'bot_run': row.get('bot_run', '')
             })
         
         return jsonify({'data': data})

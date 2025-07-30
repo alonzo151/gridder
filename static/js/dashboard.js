@@ -497,10 +497,35 @@ class GridderDashboard {
     }
 
     updateBotConfig(config) {
-        document.getElementById('config-mode').textContent = config.trading_mode || '--';
-        document.getElementById('config-entry-price').textContent = config.spot_entry_price ? `$${config.spot_entry_price}` : '--';
-        document.getElementById('config-market').textContent = config.spot_market || '--';
-        document.getElementById('config-grid-orders').textContent = config.grid_max_open_orders || '--';
+        const configContainer = document.getElementById('bot-config');
+        configContainer.innerHTML = '';
+        
+        Object.entries(config).forEach(([key, value]) => {
+            const configItem = document.createElement('div');
+            configItem.className = 'config-item';
+            
+            const label = document.createElement('span');
+            label.className = 'config-label';
+            label.textContent = `${key.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase())}:`;
+            
+            const valueSpan = document.createElement('span');
+            valueSpan.className = 'config-value';
+            valueSpan.textContent = this.formatConfigValue(key, value);
+            
+            configItem.appendChild(label);
+            configItem.appendChild(valueSpan);
+            configContainer.appendChild(configItem);
+        });
+    }
+
+    formatConfigValue(key, value) {
+        if (key.includes('price') && typeof value === 'number') {
+            return `$${value}`;
+        }
+        if (typeof value === 'boolean') {
+            return value ? 'Yes' : 'No';
+        }
+        return value || '--';
     }
 }
 
