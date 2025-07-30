@@ -47,17 +47,17 @@ def logout():
     session.clear()
     return redirect(url_for('login'))
 
-@app.route('/api/bots')
-def api_bots():
+@app.route('/api/bot-names')
+def api_bot_names():
     if not require_auth():
         return jsonify({'error': 'Unauthorized'}), 401
     
     try:
-        bots = data_reader.get_available_bots()
-        return jsonify({'bots': bots})
+        bot_names = data_reader.get_available_bot_names()
+        return jsonify({'bot_names': bot_names})
     except Exception as e:
-        logger.error(f"Error getting bots: {e}")
-        return jsonify({'error': 'Failed to load bots'}), 500
+        logger.error(f"Error getting bot names: {e}")
+        return jsonify({'error': 'Failed to load bot names'}), 500
 
 @app.route('/api/trades')
 def api_trades():
@@ -93,10 +93,18 @@ def api_stats():
     
     try:
         bot_name = request.args.get('bot_name')
+        bot_run = request.args.get('bot_run')
+        include_all_runs = request.args.get('include_all_runs', 'false').lower() == 'true'
+        hours_filter = request.args.get('hours_filter')
+        
         if bot_name == '':
             bot_name = None
+        if bot_run == '':
+            bot_run = None
+        if hours_filter:
+            hours_filter = int(hours_filter)
         
-        stats = data_reader.get_summary_stats(bot_name)
+        stats = data_reader.get_summary_stats(bot_name, bot_run, include_all_runs, hours_filter)
         return jsonify(stats)
     except Exception as e:
         logger.error(f"Error getting stats: {e}")
@@ -177,6 +185,51 @@ def api_price_data():
     except Exception as e:
         logger.error(f"Error getting price data: {e}")
         return jsonify({'error': 'Failed to load price data'}), 500
+
+@app.route('/api/bot-runs')
+def api_bot_runs():
+    if not require_auth():
+        return jsonify({'error': 'Unauthorized'}), 401
+    
+    try:
+        bot_name = request.args.get('bot_name')
+        if not bot_name:
+            return jsonify({'error': 'bot_name parameter required'}), 400
+        
+        runs = data_reader.get_bot_runs(bot_name)
+        return jsonify({'runs': runs})
+    except Exception as e:
+        logger.error(f"Error getting bot runs: {e}")
+        return jsonify({'error': 'Failed to load bot runs'}), 500
+
+@app.route('/api/latest-bot-run')
+def api_latest_bot_run():
+    if not require_auth():
+        return jsonify({'error': 'Unauthorized'}), 401
+    
+    try:
+        latest = data_reader.get_latest_bot_run()
+        return jsonify(latest)
+    except Exception as e:
+        logger.error(f"Error getting latest bot run: {e}")
+        return jsonify({'error': 'Failed to load latest bot run'}), 500
+
+@app.route('/api/run-config')
+def api_run_config():
+    if not require_auth():
+        return jsonify({'error': 'Unauthorized'}), 401
+    
+    try:
+        bot_name = request.args.get('bot_name')
+        bot_run = request.args.get('bot_run')
+        if not bot_name or not bot_run:
+            return jsonify({'error': 'bot_name and bot_run parameters required'}), 400
+        
+        config = data_reader.get_run_config(bot_name, bot_run)
+        return jsonify({'config': config})
+    except Exception as e:
+        logger.error(f"Error getting run config: {e}")
+        return jsonify({'error': 'Failed to load run config'}), 500
 
 if __name__ == '__main__':
     app.run(debug=True, host='0.0.0.0', port=5000)

@@ -3,7 +3,10 @@ class GridderDashboard {
         this.refreshRate = 30;
         this.autoRefresh = true;
         this.refreshTimer = null;
-        this.selectedBot = '';
+        this.selectedBotName = '';
+        this.selectedBotRun = '';
+        this.includeAllRuns = false;
+        this.timeFilter = 6;
         
         this.initializeControls();
         this.loadInitialData();
@@ -31,37 +34,64 @@ class GridderDashboard {
             this.refreshData();
         });
 
-        const botSelect = document.getElementById('bot-select');
-        botSelect.addEventListener('change', (e) => {
-            this.selectedBot = e.target.value;
+        const botNameSelect = document.getElementById('bot-name-select');
+        botNameSelect.addEventListener('change', (e) => {
+            this.selectedBotName = e.target.value;
+            this.selectedBotRun = '';
+            this.loadBotRuns();
+            if (this.selectedBotName) {
+                this.refreshData();
+            }
+        });
+
+        const botRunSelect = document.getElementById('bot-run-select');
+        botRunSelect.addEventListener('change', (e) => {
+            this.selectedBotRun = e.target.value;
+            this.refreshData();
+        });
+
+        const includeAllRunsCheckbox = document.getElementById('include-all-runs');
+        includeAllRunsCheckbox.addEventListener('change', (e) => {
+            this.includeAllRuns = e.target.checked;
+            const botRunSelect = document.getElementById('bot-run-select');
+            botRunSelect.disabled = this.includeAllRuns;
+            if (this.includeAllRuns) {
+                this.selectedBotRun = '';
+            }
+            this.refreshData();
+        });
+
+        const timeFilterSelect = document.getElementById('time-filter');
+        timeFilterSelect.addEventListener('change', (e) => {
+            this.timeFilter = e.target.value ? parseInt(e.target.value) : null;
             this.refreshData();
         });
     }
 
     async loadInitialData() {
-        await this.loadBotList();
+        await this.loadBotNames();
+        await this.loadDefaultSelection();
         await this.refreshData();
     }
 
-    async loadBotList() {
+    async loadBotNames() {
         try {
-            const response = await fetch('/api/bots');
+            const response = await fetch('/api/bot-names');
             const data = await response.json();
             
-            if (data.bots) {
-                const botSelect = document.getElementById('bot-select');
+            if (data.bot_names) {
+                const botNameSelect = document.getElementById('bot-name-select');
+                botNameSelect.innerHTML = '<option value="">Select Bot...</option>';
                 
-                botSelect.innerHTML = '<option value="">All Bots</option>';
-                
-                data.bots.forEach(bot => {
+                data.bot_names.forEach(botName => {
                     const option = document.createElement('option');
-                    option.value = bot;
-                    option.textContent = bot;
-                    botSelect.appendChild(option);
+                    option.value = botName;
+                    option.textContent = botName;
+                    botNameSelect.appendChild(option);
                 });
             }
         } catch (error) {
-            console.error('Error loading bot list:', error);
+            console.error('Error loading bot names:', error);
         }
     }
 
@@ -83,7 +113,15 @@ class GridderDashboard {
 
     async loadTradesData() {
         try {
-            const url = this.selectedBot ? `/api/trades?bot_name=${encodeURIComponent(this.selectedBot)}` : '/api/trades';
+            let url = '/api/trades?';
+            const params = new URLSearchParams();
+            
+            if (this.selectedBotName) params.append('bot_name', this.selectedBotName);
+            if (this.selectedBotRun && !this.includeAllRuns) params.append('bot_run', this.selectedBotRun);
+            if (this.includeAllRuns) params.append('include_all_runs', 'true');
+            if (this.timeFilter) params.append('hours_filter', this.timeFilter.toString());
+            
+            url += params.toString();
             const response = await fetch(url);
             const data = await response.json();
             
@@ -97,7 +135,15 @@ class GridderDashboard {
 
     async loadStatsData() {
         try {
-            const url = this.selectedBot ? `/api/stats?bot_name=${encodeURIComponent(this.selectedBot)}` : '/api/stats';
+            let url = '/api/stats?';
+            const params = new URLSearchParams();
+            
+            if (this.selectedBotName) params.append('bot_name', this.selectedBotName);
+            if (this.selectedBotRun && !this.includeAllRuns) params.append('bot_run', this.selectedBotRun);
+            if (this.includeAllRuns) params.append('include_all_runs', 'true');
+            if (this.timeFilter) params.append('hours_filter', this.timeFilter.toString());
+            
+            url += params.toString();
             const response = await fetch(url);
             const data = await response.json();
             
@@ -185,7 +231,15 @@ class GridderDashboard {
 
     async loadOptionsPnlData() {
         try {
-            const url = this.selectedBot ? `/api/options-pnl?bot_name=${encodeURIComponent(this.selectedBot)}` : '/api/options-pnl';
+            let url = '/api/options-pnl?';
+            const params = new URLSearchParams();
+            
+            if (this.selectedBotName) params.append('bot_name', this.selectedBotName);
+            if (this.selectedBotRun && !this.includeAllRuns) params.append('bot_run', this.selectedBotRun);
+            if (this.includeAllRuns) params.append('include_all_runs', 'true');
+            if (this.timeFilter) params.append('hours_filter', this.timeFilter.toString());
+            
+            url += params.toString();
             const response = await fetch(url);
             const data = await response.json();
             
@@ -199,7 +253,15 @@ class GridderDashboard {
 
     async loadTotalPnlData() {
         try {
-            const url = this.selectedBot ? `/api/total-pnl?bot_name=${encodeURIComponent(this.selectedBot)}` : '/api/total-pnl';
+            let url = '/api/total-pnl?';
+            const params = new URLSearchParams();
+            
+            if (this.selectedBotName) params.append('bot_name', this.selectedBotName);
+            if (this.selectedBotRun && !this.includeAllRuns) params.append('bot_run', this.selectedBotRun);
+            if (this.includeAllRuns) params.append('include_all_runs', 'true');
+            if (this.timeFilter) params.append('hours_filter', this.timeFilter.toString());
+            
+            url += params.toString();
             const response = await fetch(url);
             const data = await response.json();
             
@@ -213,7 +275,15 @@ class GridderDashboard {
 
     async loadPriceData() {
         try {
-            const url = this.selectedBot ? `/api/price-data?bot_name=${encodeURIComponent(this.selectedBot)}` : '/api/price-data';
+            let url = '/api/price-data?';
+            const params = new URLSearchParams();
+            
+            if (this.selectedBotName) params.append('bot_name', this.selectedBotName);
+            if (this.selectedBotRun && !this.includeAllRuns) params.append('bot_run', this.selectedBotRun);
+            if (this.includeAllRuns) params.append('include_all_runs', 'true');
+            if (this.timeFilter) params.append('hours_filter', this.timeFilter.toString());
+            
+            url += params.toString();
             const response = await fetch(url);
             const data = await response.json();
             
@@ -330,6 +400,7 @@ class GridderDashboard {
         document.getElementById('buy-trades').textContent = stats.buy_trades || 0;
         document.getElementById('sell-trades').textContent = stats.sell_trades || 0;
         document.getElementById('unrealized-pnl').textContent = `$${(stats.unrealized_pnl || 0).toFixed(2)}`;
+        document.getElementById('total-unrealized-pnl').textContent = `$${(stats.total_unrealized_pnl || 0).toFixed(2)}`;
     }
 
     updateLastUpdatedTime() {
@@ -356,6 +427,80 @@ class GridderDashboard {
     restartAutoRefresh() {
         this.stopAutoRefresh();
         this.startAutoRefresh();
+    }
+
+    async loadBotRuns() {
+        const botRunSelect = document.getElementById('bot-run-select');
+        
+        if (!this.selectedBotName) {
+            botRunSelect.innerHTML = '<option value="">Select Run...</option>';
+            botRunSelect.disabled = true;
+            return;
+        }
+
+        try {
+            const response = await fetch(`/api/bot-runs?bot_name=${encodeURIComponent(this.selectedBotName)}`);
+            const data = await response.json();
+            
+            if (data.runs) {
+                botRunSelect.innerHTML = '<option value="">Select Run...</option>';
+                
+                data.runs.forEach(run => {
+                    const option = document.createElement('option');
+                    option.value = run.bot_run;
+                    option.textContent = `${run.bot_run} (${new Date(run.timestamp).toLocaleString()})`;
+                    botRunSelect.appendChild(option);
+                });
+                
+                botRunSelect.disabled = this.includeAllRuns;
+            }
+        } catch (error) {
+            console.error('Error loading bot runs:', error);
+        }
+    }
+
+    async loadDefaultSelection() {
+        try {
+            const response = await fetch('/api/latest-bot-run');
+            const data = await response.json();
+            
+            if (data.bot_name && data.bot_run) {
+                this.selectedBotName = data.bot_name;
+                this.selectedBotRun = data.bot_run;
+                
+                document.getElementById('bot-name-select').value = this.selectedBotName;
+                await this.loadBotRuns();
+                document.getElementById('bot-run-select').value = this.selectedBotRun;
+                
+                await this.loadRunConfig();
+            }
+        } catch (error) {
+            console.error('Error loading default selection:', error);
+        }
+    }
+
+    async loadRunConfig() {
+        if (!this.selectedBotName || !this.selectedBotRun) {
+            return;
+        }
+
+        try {
+            const response = await fetch(`/api/run-config?bot_name=${encodeURIComponent(this.selectedBotName)}&bot_run=${encodeURIComponent(this.selectedBotRun)}`);
+            const data = await response.json();
+            
+            if (data.config) {
+                this.updateBotConfig(data.config);
+            }
+        } catch (error) {
+            console.error('Error loading run config:', error);
+        }
+    }
+
+    updateBotConfig(config) {
+        document.getElementById('config-mode').textContent = config.trading_mode || '--';
+        document.getElementById('config-entry-price').textContent = config.spot_entry_price ? `$${config.spot_entry_price}` : '--';
+        document.getElementById('config-market').textContent = config.spot_market || '--';
+        document.getElementById('config-grid-orders').textContent = config.grid_max_open_orders || '--';
     }
 }
 

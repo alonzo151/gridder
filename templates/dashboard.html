@@ -38,9 +38,57 @@
 
             <div class="controls-section">
                 <h3>Bot Selection</h3>
-                <select id="bot-select">
-                    <option value="">All Bots</option>
-                </select>
+                <div class="control-group">
+                    <label for="bot-name-select">Bot Name</label>
+                    <select id="bot-name-select">
+                        <option value="">Select Bot...</option>
+                    </select>
+                </div>
+                <div class="control-group">
+                    <label for="bot-run-select">Bot Run</label>
+                    <select id="bot-run-select" disabled>
+                        <option value="">Select Run...</option>
+                    </select>
+                </div>
+                <div class="control-group">
+                    <label>
+                        <input type="checkbox" id="include-all-runs">
+                        Include All Runs for Bot
+                    </label>
+                </div>
+                <div class="control-group">
+                    <label for="time-filter">Time Filter</label>
+                    <select id="time-filter">
+                        <option value="">All Time</option>
+                        <option value="1">Last 1 Hour</option>
+                        <option value="6" selected>Last 6 Hours</option>
+                        <option value="12">Last 12 Hours</option>
+                        <option value="24">Last 24 Hours</option>
+                        <option value="168">Last 7 Days</option>
+                    </select>
+                </div>
+            </div>
+
+            <div class="controls-section">
+                <h3>Bot Configuration</h3>
+                <div id="bot-config" class="config-display">
+                    <div class="config-item">
+                        <span class="config-label">Mode:</span>
+                        <span class="config-value" id="config-mode">--</span>
+                    </div>
+                    <div class="config-item">
+                        <span class="config-label">Entry Price:</span>
+                        <span class="config-value" id="config-entry-price">--</span>
+                    </div>
+                    <div class="config-item">
+                        <span class="config-label">Market:</span>
+                        <span class="config-value" id="config-market">--</span>
+                    </div>
+                    <div class="config-item">
+                        <span class="config-label">Grid Orders:</span>
+                        <span class="config-value" id="config-grid-orders">--</span>
+                    </div>
+                </div>
             </div>
 
             <div class="controls-section">
@@ -67,8 +115,12 @@
                     <div class="stat-value" id="sell-trades">0</div>
                 </div>
                 <div class="stat-card">
-                    <h3>Unrealized PnL</h3>
+                    <h3>Unrealized PnL Spot</h3>
                     <div class="stat-value" id="unrealized-pnl">$0.00</div>
+                </div>
+                <div class="stat-card">
+                    <h3>Unrealized Total PnL</h3>
+                    <div class="stat-value" id="total-unrealized-pnl">$0.00</div>
                 </div>
             </div>
 
