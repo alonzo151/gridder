@@ -15,7 +15,8 @@ logger = setup_logger()
 class TraderBot:
     def __init__(self, config: Dict[str, Any]):
         self.config = config
-        self.bot_name = self._generate_bot_name()
+        self.bot_name = config.get('bot_name', 'DefaultBot')
+        self.bot_run = self._generate_bot_run()
         self.test_mode = config['trading_mode'] == 'test'
         self.running = False
         self.start_time = datetime.utcnow()
@@ -56,9 +57,9 @@ class TraderBot:
         
         logger.info(f"Initialized TraderBot: {self.bot_name}")
 
-    def _generate_bot_name(self) -> str:
-        timestamp = int(datetime.utcnow().timestamp())
-        return f"{self.config['spot_entry_price']}_{timestamp}"
+    def _generate_bot_run(self) -> str:
+        timestamp = datetime.utcnow().strftime("%Y%m%d_%H%M%S")
+        return timestamp
 
     def start(self):
         if not self._verify_sufficient_funds():
@@ -67,6 +68,8 @@ class TraderBot:
         
         self.running = True
         logger.info(f"Starting bot {self.bot_name}")
+        
+        self.database.save_run_config(self.bot_name, self.bot_run, self.config)
         
         for index, order_row in self.orders_df.iterrows():
             order_data = {
@@ -210,7 +213,7 @@ class TraderBot:
                             'bot_name': self.bot_name,
                             'mode': 'live'
                         }
-                        self.database.save_to_db('trades', trade_data , self.bot_name)
+                        self.database.save_to_db('trades', trade_data, self.bot_name, self.bot_run)
                         self.last_trade = trade_data
         else:
             # Test mode: compare current to previous BTC balance
@@ -236,7 +239,7 @@ class TraderBot:
                                 'mode': 'test'
                             }
                             logger.info(f"Buying trade at price {order['price']}")
-                            self.database.save_to_db('trades', trade_data, self.bot_name)
+                            self.database.save_to_db('trades', trade_data, self.bot_name, self.bot_run)
                             # remove the order from open_orders
                             self.open_orders = [o for o in self.open_orders if o['orderId'] != order['orderId']]
                             self.last_trade = trade_data
@@ -256,7 +259,7 @@ class TraderBot:
                                 'bot_name': self.bot_name,
                                 'mode': 'test'
                             }
-                            self.database.save_to_db('trades', trade_data, self.bot_name)
+                            self.database.save_to_db('trades', trade_data, self.bot_name, self.bot_run)
                             self.open_orders = [o for o in self.open_orders if o['orderId'] != order['orderId']]
                             self.last_trade = trade_data
 
@@ -350,14 +353,14 @@ class TraderBot:
             'sell_trades': self.sell_trades,
             'total_trades': self.buy_trades + self.sell_trades,
             'mode': 'test' if self.test_mode else 'live'
-        }, self.bot_name)
+        }, self.bot_name, self.bot_run)
         
         self.database.save_to_db('options_stats', {
             'call_unrealized_pnl': options_data['call_pnl'],
             'put_unrealized_pnl': options_data['put_pnl'],
             'total_options_pnl': options_data['total_pnl'],
             'mode': 'test' if self.test_mode else 'live'
-        }, self.bot_name)
+        }, self.bot_name, self.bot_run)
         
         logger.info(f"PnL Check - Spot: {spot_pnl:.2f}, Options: {options_data['total_pnl']:.2f}, Total: {total_pnl:.2f}")
         logger.info(f"Call PnL: {options_data['call_pnl']:.2f}, Put PnL: {options_data['put_pnl']:.2f}")
@@ -461,5 +464,4 @@ class TraderBot:
             'total_trades': self.buy_trades + self.sell_trades,
             'running_time_hours': (datetime.utcnow() - self.start_time).total_seconds() / 3600,
             'mode': 'test' if self.test_mode else 'live'
-        }, self.bot_name)
-
+        }, self.bot_name, self.bot_run)
