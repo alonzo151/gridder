@@ -14,6 +14,7 @@ class GridderDashboard {
     }
 
     initializeControls() {
+        console.log("initializeControls called")
         const refreshRateSlider = document.getElementById('refresh-rate');
         const refreshRateValue = document.getElementById('refresh-rate-value');
         
@@ -204,6 +205,7 @@ class GridderDashboard {
 
         const layout = {
             title: 'Trading Activity - Buy/Sell Trades',
+            height: 400,
             xaxis: {
                 title: 'Time',
                 type: 'date'
@@ -326,6 +328,7 @@ class GridderDashboard {
 
         const layout = {
             title: 'Options PnL Over Time',
+            height: 400,
             xaxis: { title: 'Time', type: 'date' },
             yaxis: { title: 'PnL (FDUSD)' },
             hovermode: 'closest',
@@ -350,12 +353,13 @@ class GridderDashboard {
             mode: 'lines+markers',
             marker: { color: 'purple', size: 6 },
             line: { color: 'purple', width: 2 },
-            name: 'Total Unrealized PnL',
+            name: 'Spot + Options Unrealized PnL',
             hovertemplate: '<b>Total PnL</b><br>Time: %{x}<br>PnL: $%{y:.2f}<extra></extra>'
         }];
 
         const layout = {
-            title: 'Total Unrealized PnL Over Time',
+            title: 'Spot + Options Unrealized PnL',
+            height: 400,
             xaxis: { title: 'Time', type: 'date' },
             yaxis: { title: 'PnL (FDUSD)' },
             hovermode: 'closest',
@@ -385,6 +389,7 @@ class GridderDashboard {
 
         const layout = {
             title: 'BTCFDUSD Price Over Time',
+            height: 400,
             xaxis: { title: 'Time', type: 'date' },
             yaxis: { title: 'Price (FDUSD)' },
             hovermode: 'closest',
@@ -433,36 +438,44 @@ class GridderDashboard {
     }
 
     async loadBotRuns() {
-        const botRunSelect = document.getElementById('bot-run-select');
-        
-        if (!this.selectedBotName) {
-            botRunSelect.innerHTML = '<option value="">Select Run...</option>';
-            botRunSelect.disabled = true;
-            return;
-        }
+    const botRunSelect = document.getElementById('bot-run-select');
 
-        try {
-            const response = await fetch(`/api/bot-runs?bot_name=${encodeURIComponent(this.selectedBotName)}`);
-            const data = await response.json();
-            
-            if (data.runs) {
-                botRunSelect.innerHTML = '<option value="">Select Run...</option>';
-                
-                data.runs.forEach(run => {
-                    const option = document.createElement('option');
-                    option.value = run.bot_run;
-                    option.textContent = `${run.bot_run} (${new Date(run.timestamp).toLocaleString()})`;
-                    botRunSelect.appendChild(option);
-                });
-                
-                botRunSelect.disabled = this.includeAllRuns;
-            }
-        } catch (error) {
-            console.error('Error loading bot runs:', error);
-        }
+    if (!this.selectedBotName) {
+        botRunSelect.innerHTML = '<option value="">Select Run...</option>';
+        botRunSelect.disabled = true;
+        return;
     }
 
+    try {
+        const response = await fetch(`/api/bot-runs?bot_name=${encodeURIComponent(this.selectedBotName)}`);
+        const data = await response.json();
+
+        if (data.runs && data.runs.length > 0) {
+            botRunSelect.innerHTML = '';
+            data.runs.forEach((run, idx) => {
+                const option = document.createElement('option');
+                option.value = run.bot_run;
+                option.textContent = `${run.bot_run} (${new Date(run.timestamp).toLocaleString()})`;
+                botRunSelect.appendChild(option);
+            });
+            botRunSelect.disabled = this.includeAllRuns;
+
+            // Auto-select the latest run
+            this.selectedBotRun = data.runs[0].bot_run;
+            botRunSelect.value = this.selectedBotRun;
+            this.loadRunConfig();
+        } else {
+            botRunSelect.innerHTML = '<option value="">Select Run...</option>';
+            botRunSelect.disabled = true;
+            this.selectedBotRun = '';
+        }
+    } catch (error) {
+        console.error('Error loading bot runs:', error);
+    }
+}
+
     async loadDefaultSelection() {
+        console.log("loadDefaultSelection called")
         try {
             const response = await fetch('/api/latest-bot-run');
             const data = await response.json();
@@ -487,9 +500,11 @@ class GridderDashboard {
             return;
         }
 
+
         try {
             const response = await fetch(`/api/run-config?bot_name=${encodeURIComponent(this.selectedBotName)}&bot_run=${encodeURIComponent(this.selectedBotRun)}`);
             const data = await response.json();
+            console.log(data)
             
             if (data.config) {
                 this.updateBotConfig(data.config);
