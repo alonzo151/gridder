@@ -74,7 +74,7 @@ class UIDataReader:
             options_df['timestamp'] = pd.to_datetime(options_df['timestamp'])
             
             merged_df = pd.merge_asof(
-                spot_df[['timestamp', 'unrealized_pnl', 'bot_name']].sort_values('timestamp'),
+                spot_df[['timestamp', 'spot_unrealized_pnl', 'bot_name']].sort_values('timestamp'),
                 options_df[['timestamp', 'total_options_pnl', 'bot_name']].sort_values('timestamp'),
                 on='timestamp', 
                 by='bot_name', 
@@ -82,19 +82,19 @@ class UIDataReader:
                 tolerance=pd.Timedelta(seconds=1)
             )
             
-            merged_df['unrealized_pnl'] = merged_df['unrealized_pnl'].fillna(0)
+            merged_df['spot_unrealized_pnl'] = merged_df['spot_unrealized_pnl'].fillna(0)
             merged_df['total_options_pnl'] = merged_df['total_options_pnl'].fillna(0)
-            merged_df['total_unrealized_pnl'] = merged_df['unrealized_pnl'] + merged_df['total_options_pnl']
+            merged_df['total_unrealized_pnl'] = merged_df['spot_unrealized_pnl'] + merged_df['total_options_pnl']
             
             merged_df = merged_df.set_index('timestamp')
-            merged_df = merged_df.groupby('bot_name')[['unrealized_pnl', 'total_options_pnl', 'total_unrealized_pnl']].resample('5min').last().reset_index()
+            merged_df = merged_df.groupby('bot_name')[['spot_unrealized_pnl', 'total_options_pnl', 'total_unrealized_pnl']].resample('5min').last().reset_index()
             merged_df = merged_df.dropna(subset=['total_unrealized_pnl'])
             
             result_df = merged_df[['timestamp', 'total_unrealized_pnl', 'bot_name']].sort_values('timestamp')
             return self._apply_time_filter(result_df, hours_filter)
         elif not spot_df.empty:
             spot_df['timestamp'] = pd.to_datetime(spot_df['timestamp'])
-            spot_df['total_unrealized_pnl'] = spot_df['unrealized_pnl']
+            spot_df['total_unrealized_pnl'] = spot_df['spot_unrealized_pnl']
             spot_df = spot_df.set_index('timestamp')
             spot_df = spot_df.groupby('bot_name')[['total_unrealized_pnl']].resample('5min').last().reset_index()
             result_df = spot_df[['timestamp', 'total_unrealized_pnl', 'bot_name']].dropna()
@@ -128,7 +128,7 @@ class UIDataReader:
         result_df = price_df.sort_values('timestamp')
         
         return self._apply_time_filter(result_df, hours_filter)
-    
+
     def get_summary_stats(self, bot_name: Optional[str] = None, bot_run: Optional[str] = None,
                          include_all_runs: bool = False, hours_filter: Optional[int] = None) -> Dict[str, Any]:
         """Get summary statistics for the dashboard"""
@@ -144,23 +144,28 @@ class UIDataReader:
                 'buy_trades': 0,
                 'sell_trades': 0,
                 'realized_pnl': 0.0,
-                'unrealized_pnl': 0.0,
+                'spot_realized_pnl': 0.0,
+                'spot_unrealized_pnl': 0.0,
+                'options_unrealized_pnl': 0.0,
                 'total_unrealized_pnl': 0.0
             }
         
         latest_spot_stats = spot_stats[-1]
         latest_options_stats = options_stats[-1] if options_stats else None
         
-        spot_unrealized = latest_spot_stats.get('unrealized_pnl', 0.0)
+        spot_unrealized = latest_spot_stats.get('spot_unrealized_pnl', 0.0)
         options_unrealized = latest_options_stats.get('total_options_pnl', 0.0) if latest_options_stats else 0.0
         total_unrealized = spot_unrealized + options_unrealized
-        
+        spot_realized_pnl = latest_spot_stats.get('spot_realized_pnl', 0.0)
+
         return {
             'total_trades': latest_spot_stats.get('total_trades', 0),
             'buy_trades': latest_spot_stats.get('buy_trades', 0),
             'sell_trades': latest_spot_stats.get('sell_trades', 0),
             'realized_pnl': latest_spot_stats.get('realized_pnl', 0.0),
-            'unrealized_pnl': spot_unrealized,
+            'spot_realized_pnl': spot_realized_pnl,
+            'spot_unrealized_pnl': spot_unrealized,
+            'options_unrealized_pnl': options_unrealized,
             'total_unrealized_pnl': total_unrealized
         }
     

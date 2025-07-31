@@ -41,6 +41,7 @@ class GridderDashboard {
             this.loadBotRuns();
             if (this.selectedBotName) {
                 this.refreshData();
+                this.loadRunConfig();
             }
         });
 
@@ -399,8 +400,10 @@ class GridderDashboard {
         document.getElementById('total-trades').textContent = stats.total_trades || 0;
         document.getElementById('buy-trades').textContent = stats.buy_trades || 0;
         document.getElementById('sell-trades').textContent = stats.sell_trades || 0;
-        document.getElementById('unrealized-pnl').textContent = `$${(stats.unrealized_pnl || 0).toFixed(2)}`;
+        document.getElementById('unrealized-pnl').textContent = `$${(stats.spot_unrealized_pnl || 0).toFixed(2)}`;
         document.getElementById('total-unrealized-pnl').textContent = `$${(stats.total_unrealized_pnl || 0).toFixed(2)}`;
+        document.getElementById('options-unrealized-pnl').textContent = `$${(stats.options_unrealized_pnl || 0).toFixed(2)}`;
+        document.getElementById('spot-realized-pnl').textContent = `$${(stats.spot_realized_pnl || 0).toFixed(2)}`;
     }
 
     updateLastUpdatedTime() {
@@ -497,10 +500,14 @@ class GridderDashboard {
     }
 
     updateBotConfig(config) {
-        document.getElementById('config-mode').textContent = config.trading_mode || '--';
-        document.getElementById('config-entry-price').textContent = config.spot_entry_price ? `$${config.spot_entry_price}` : '--';
-        document.getElementById('config-market').textContent = config.spot_market || '--';
-        document.getElementById('config-grid-orders').textContent = config.grid_max_open_orders || '--';
+        const configContainer = document.getElementById('bot-config');
+        configContainer.innerHTML = ''; // Clear previous content
+
+        Object.entries(config).forEach(([key, value]) => {
+            const row = document.createElement('div');
+            row.textContent = `${key}: ${value}`;
+            configContainer.appendChild(row);
+        });
     }
 }
 

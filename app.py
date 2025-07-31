@@ -66,10 +66,11 @@ def api_trades():
     
     try:
         bot_name = request.args.get('bot_name')
+        bot_run = request.args.get('bot_run')
         if bot_name == '':
             bot_name = None
         
-        trades_df = data_reader.get_trades_data(bot_name)
+        trades_df = data_reader.get_trades_data(bot_name, bot_run)
         
         trades = []
         for _, row in trades_df.iterrows():
@@ -232,4 +233,4 @@ def api_run_config():
         return jsonify({'error': 'Failed to load run config'}), 500
 
 if __name__ == '__main__':
-    app.run(debug=True, host='0.0.0.0', port=5000)
+    app.run(debug=True, host='0.0.0.0', port=5001)

@@ -336,9 +336,10 @@ class TraderBot:
             logger.error(f"Failed to place order: {e}")
 
     def _check_pnl(self):
-        spot_pnl = self._calculate_spot_pnl()
+        spot_realized_pnl = self.calculate_spot_realized_pnl(self.bot_name)
+        spot_unrealized_pnl = self._calculate_spot_unrealized_pnl()
         options_data = self._calculate_options_pnl()
-        total_pnl = spot_pnl + options_data['total_pnl']
+        total_pnl = spot_unrealized_pnl + options_data['total_pnl']
         
         running_days = max(1, (datetime.utcnow() - self.start_time).days)
         daily_pnl = total_pnl / running_days
@@ -348,7 +349,8 @@ class TraderBot:
         
         self.database.save_to_db('spot_stats', {
             'realized_pnl': self.realized_pnl,
-            'unrealized_pnl': spot_pnl,
+            'spot_unrealized_pnl': spot_unrealized_pnl,
+            'spot_realized_pnl': spot_realized_pnl,
             'buy_trades': self.buy_trades,
             'sell_trades': self.sell_trades,
             'total_trades': self.buy_trades + self.sell_trades,
@@ -362,7 +364,7 @@ class TraderBot:
             'mode': 'test' if self.test_mode else 'live'
         }, self.bot_name, self.bot_run)
         
-        logger.info(f"PnL Check - Spot: {spot_pnl:.2f}, Options: {options_data['total_pnl']:.2f}, Total: {total_pnl:.2f}")
+        logger.info(f"PnL Check - Spot: {spot_unrealized_pnl:.2f}, Options: {options_data['total_pnl']:.2f}, Total: {total_pnl:.2f}")
         logger.info(f"Call PnL: {options_data['call_pnl']:.2f}, Put PnL: {options_data['put_pnl']:.2f}")
         logger.info(f"Daily ROI: {daily_roi:.4f} ({daily_roi*100:.2f}%)")
         
@@ -370,7 +372,7 @@ class TraderBot:
             logger.info("Daily ROI target reached, entering take profit mode")
             self._enter_take_profit_mode()
 
-    def _calculate_spot_pnl(self) -> float:
+    def _calculate_spot_unrealized_pnl(self) -> float:
         bid, ask = self._get_current_bid_ask()
         current_price = (bid + ask) / 2
         balances = self._get_current_balances(current_price)
@@ -379,6 +381,41 @@ class TraderBot:
         initial_value = self.base_needed * self.config['spot_entry_price'] + self.quote_needed
         current_value = btc_balance * current_price + fdusd_balance
         return current_value - initial_value + self.realized_pnl
+
+    def calculate_spot_realized_pnl(self, bot_name: str) -> float:
+        """
+        Calculate realized spot PnL for a given bot using FIFO matching.
+        Assumes 'trades' table has 'side' ('buy'/'sell'), 'price', 'quantity'.
+        """
+        trades = self.database.read_table('trades', bot_name)
+        if not trades:
+            return 0.0
+
+        # Sort trades by timestamp
+        trades = sorted(trades, key=lambda x: x['timestamp'])
+        open_positions = []  # Each entry: [quantity, price]
+        realized_pnl = 0.0
+
+        for trade in trades:
+            side = trade['side'].lower()
+            qty = float(trade['quantity'])
+            price = float(trade['price'])
+
+            if side == 'buy':
+                open_positions.append([qty, price])
+            elif side == 'sell':
+                qty_to_close = qty
+                while qty_to_close > 0 and open_positions:
+                    open_qty, open_price = open_positions[0]
+                    matched_qty = min(open_qty, qty_to_close)
+                    pnl = (price - open_price) * matched_qty
+                    realized_pnl += pnl
+                    open_positions[0][0] -= matched_qty
+                    qty_to_close -= matched_qty
+                    if open_positions[0][0] == 0:
+                        open_positions.pop(0)
+                # If selling more than held, ignore excess (or handle as needed)
+        return realized_pnl
 
     def _calculate_options_pnl(self) -> Dict[str, float]:
         try:
@@ -449,7 +486,7 @@ class TraderBot:
                 logger.error(f"Failed to sell BTC: {e}")
 
     def _calculate_final_pnl(self) -> float:
-        spot_pnl = self._calculate_spot_pnl()
+        spot_pnl = self._calculate_spot_unrealized_pnl()
         options_data = self._calculate_options_pnl()
         return spot_pnl + options_data['total_pnl']
 
