@@ -16,25 +16,25 @@ class SimulativeDatabase:
 
     def save_to_db(self, table_name: str, data: Dict[str, Any], bot_name: str, bot_run: str = None):
         timestamp = datetime.utcnow().isoformat() + "Z"
-        formatted_data = TableSchemaManager.format_data(table_name, data)
-
         record = {
             "timestamp": timestamp,
             "bot_name": bot_name,
             "bot_run": bot_run,
-            **formatted_data
+            **data
         }
+        formatted_data = TableSchemaManager.format_data(table_name, record)
+
         
         file_path = self._get_current_file_path(table_name)
         
         try:
             with open(file_path, 'a') as f:
-                f.write(json.dumps(record) + '\n')
+                f.write(json.dumps(formatted_data) + '\n')
             
             if self._get_file_size(file_path) > self.max_file_size:
                 self._rotate_file(table_name)
                 
-            logger.debug(f"Saved data to {table_name}: {record}")
+            logger.debug(f"Saved data to {table_name}: {formatted_data}")
             
         except Exception as e:
             logger.error(f"Failed to save data to {table_name}: {e}")
