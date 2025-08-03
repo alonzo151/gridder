@@ -15,14 +15,16 @@ class SimulativeDatabase:
         logger.info(f"Initialized simulative database in {self.data_dir}")
 
     def save_to_db(self, table_name: str, data: Dict[str, Any], bot_name: str, bot_run: str = None):
-        timestamp = datetime.utcnow().isoformat() + "Z"
+
         record = {
-            "timestamp": timestamp,
             "bot_name": bot_name,
             "bot_run": bot_run,
             **data
         }
         formatted_data = TableSchemaManager.format_data(table_name, record)
+        timestamp = datetime.utcnow().isoformat() + "Z"
+        #add timestamp to the formatted data
+        formatted_data['timestamp'] = timestamp
 
         
         file_path = self._get_current_file_path(table_name)
