@@ -9,6 +9,7 @@ from src.binance_integration import BinanceIntegration
 from src.deribit_integration import DeribitIntegration
 from src.grid_calculator import GridCalculator
 from src.database import SimulativeDatabase
+from src.table_schema_manager import TableSchemaManager
 
 logger = setup_logger()
 
@@ -138,12 +139,22 @@ class TraderBot:
     def _calculate_simulated_balances(self, current_price) -> Dict[str, float]:
         """Calculate dynamic balances based on current price and grid orders that would have been executed"""
         # get the btc balance from orders_df by using current_price
-        row = self.orders_df[self.orders_df['price'] <= current_price].iloc[-1] if not self.orders_df.empty else None
-        expected_base_balance = 0
-        expected_quote_balance = 0
-        if row is not None:
-            expected_base_balance = row['base_balance']
-            expected_quote_balance = row['quote_balance']
+        max_price = self.orders_df['price'].max()
+        min_price = self.orders_df['price'].min()
+        if current_price < min_price:
+            expected_quote_balance = 0
+            expected_base_balance = self.base_needed
+        elif current_price > max_price:
+            expected_quote_balance = self.quote_needed
+            expected_base_balance = 0
+        else:
+            filtterd_orders = self.orders_df[self.orders_df['price'] <= current_price]
+            row = filtterd_orders.iloc[-1] if not filtterd_orders.empty else None
+            expected_base_balance = 0
+            expected_quote_balance = 0
+            if row is not None:
+                expected_base_balance = row['base_balance']
+                expected_quote_balance = row['quote_balance']
 
         return {
             'BTC': max(0, expected_base_balance),  # Ensure non-negative

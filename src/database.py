@@ -3,6 +3,7 @@ import json
 from datetime import datetime
 from typing import Dict, Any, List
 from src.logger import setup_logger
+from src.table_schema_manager import TableSchemaManager  # Import the schema manager
 
 logger = setup_logger()
 
@@ -15,12 +16,13 @@ class SimulativeDatabase:
 
     def save_to_db(self, table_name: str, data: Dict[str, Any], bot_name: str, bot_run: str = None):
         timestamp = datetime.utcnow().isoformat() + "Z"
-        
+        formatted_data = TableSchemaManager.format_data(table_name, data)
+
         record = {
             "timestamp": timestamp,
             "bot_name": bot_name,
             "bot_run": bot_run,
-            **data
+            **formatted_data
         }
         
         file_path = self._get_current_file_path(table_name)
