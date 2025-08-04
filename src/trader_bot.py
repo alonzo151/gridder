@@ -51,7 +51,7 @@ class TraderBot:
         self.buy_trades = 0
         self.sell_trades = 0
         self.realized_pnl = 0.0
-        self.last_pnl_check = datetime.utcnow()
+        self.last_pnl_check = datetime.utcnow() - timedelta(minutes=1)
         self.last_price = None
         self.last_simulated_balances = None
         self.last_trade = None
@@ -445,7 +445,7 @@ class TraderBot:
             )
             # Convert BTC PnL to FDUSD using current spot price
             bid, ask = self._get_current_bid_ask()
-            call_pnl_btc = (call_price - self.config['call_option_initial_cost_base'] / self.config['put_option_size_base']) * self.config['call_option_size_base']
+            call_pnl_btc = (call_price - self.config['call_option_initial_cost_base'] / self.config['call_option_size_base']) * self.config['call_option_size_base']
             put_pnl_btc = (put_price - self.config['put_option_initial_cost_base'] / self.config['put_option_size_base']) * self.config['put_option_size_base']
             call_pnl = call_pnl_btc * bid
             put_pnl = put_pnl_btc * bid

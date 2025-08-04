@@ -113,7 +113,7 @@ def solve_two_size_strategy(call, put, spot_below, underline_price, expiration_d
             'daily_roi_percent': round(daily_roi_percent, 6),
             'objective': round(result.fun, 10),
             'basis_rate': basis_rate,
-            'total_spot_funds_base': round(spot_below_size, 2),
+            'total_spot_funds_base': round(spot_below_size, 6),
         }
 
 
