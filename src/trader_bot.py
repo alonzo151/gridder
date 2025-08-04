@@ -409,26 +409,35 @@ class TraderBot:
         trades = sorted(trades, key=lambda x: x['timestamp'])
         open_positions = []  # Each entry: [quantity, price]
         realized_pnl = 0.0
-
-        for trade in trades:
-            side = trade['side'].lower()
-            qty = float(trade['quantity'])
-            price = float(trade['price'])
-
-            if side == 'buy':
-                open_positions.append([qty, price])
-            elif side == 'sell':
-                qty_to_close = qty
-                while qty_to_close > 0 and open_positions:
-                    open_qty, open_price = open_positions[0]
-                    matched_qty = min(open_qty, qty_to_close)
-                    pnl = (price - open_price) * matched_qty
-                    realized_pnl += pnl
-                    open_positions[0][0] -= matched_qty
-                    qty_to_close -= matched_qty
-                    if open_positions[0][0] == 0:
-                        open_positions.pop(0)
-                # If selling more than held, ignore excess (or handle as needed)
+        # sum all buy trades
+        buy_trades_base = sum(float(trade['quantity']) for trade in trades if trade['side'].lower() == 'buy')
+        buy_trades_quote = sum(float(trade['quantity']) * float(trade['price']) for trade in trades if trade['side'].lower() == 'buy')
+        # sum all sell trades
+        sell_trades_base = sum(float(trade['quantity']) for trade in trades if trade['side'].lower() == 'sell')
+        sell_trades_quote = sum(float(trade['quantity']) * float(trade['price']) for trade in trades if trade['side'].lower() == 'sell')
+        if buy_trades_base == 0 or sell_trades_base == 0:
+            logger.warning("No trades found for PnL calculation")
+            return 0.0
+        realized_pnl = ((sell_trades_quote / sell_trades_base) - (buy_trades_quote / buy_trades_base))  * min(sell_trades_base, buy_trades_base)
+        # for trade in trades:
+        #     side = trade['side'].lower()
+        #     qty = float(trade['quantity'])
+        #     price = float(trade['price'])
+        #
+        #     if side == 'buy':
+        #         open_positions.append([qty, price])
+        #     elif side == 'sell':
+        #         qty_to_close = qty
+        #         while qty_to_close > 0 and open_positions:
+        #             open_qty, open_price = open_positions[0]
+        #             matched_qty = min(open_qty, qty_to_close)
+        #             pnl = (price - open_price) * matched_qty
+        #             realized_pnl += pnl
+        #             open_positions[0][0] -= matched_qty
+        #             qty_to_close -= matched_qty
+        #             if open_positions[0][0] == 0:
+        #                 open_positions.pop(0)
+        #         # If selling more than held, ignore excess (or handle as needed)
         return realized_pnl
 
     def _calculate_options_pnl(self) -> Dict[str, float]:
