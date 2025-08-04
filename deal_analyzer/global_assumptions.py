@@ -1,0 +1,10 @@
+spot_one_side_range_percent = 1.0
+spot_total_funds = 2100
+one_side_plotting_range_percent = 50
+zero_profit_at_one_side_percent = 5.0
+daily_grid_profit_percent = 0.35
+call_option_basic_size_base = 0.1
+spot_orders_diff_percent = 0.01
+options_min_days_to_expiration = 30
+spot_order_size_quote = spot_total_funds / 2 / (spot_one_side_range_percent / spot_orders_diff_percent)
+min_liquidity_for_options_base = 0.5

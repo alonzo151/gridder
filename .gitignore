@@ -5,6 +5,12 @@ __pycache__/
 src/logs
 data
 config/config_local.json
+.DS_Store
+.idea/
+deal_analyzer/BTC-deal_analyzer-export.csv
+deal_analyzer/BTC-deal_analyzer-meta.csv
+deal_analyzer/top_1000_strategies.csv
+deal_analyzer/config_for_plotter.json
 
 # C extensions
 *.so

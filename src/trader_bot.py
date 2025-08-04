@@ -168,7 +168,11 @@ class TraderBot:
         except Exception as e:
             logger.warning(f"Failed to get current price, using entry price: {e}")
             return self.config['spot_entry_price']
-    
+
+    def _get_current_mid_price(self) -> float:
+        bid , ask = self._get_current_bid_ask()
+        return (bid + ask) / 2 if bid and ask else None
+
     def _get_current_market_price(self) -> float:
         """Get current market price - separate method to avoid circular dependency in simulated balance calculation"""
         try:
@@ -384,8 +388,7 @@ class TraderBot:
             self._enter_take_profit_mode()
 
     def _calculate_spot_unrealized_pnl(self) -> float:
-        bid, ask = self._get_current_bid_ask()
-        current_price = (bid + ask) / 2
+        current_price = self._get_current_mid_price()
         balances = self._get_current_balances(current_price)
         btc_balance = balances.get('BTC', 0)
         fdusd_balance = balances.get('FDUSD', 0)
@@ -442,11 +445,10 @@ class TraderBot:
             )
             # Convert BTC PnL to FDUSD using current spot price
             bid, ask = self._get_current_bid_ask()
-            spot_price = (bid + ask) / 2
-            call_pnl_btc = (call_price - self.config['call_option_initial_cost_base']) * self.config['call_option_size_base']
-            put_pnl_btc = (put_price - self.config['put_option_initial_cost_base']) * self.config['put_option_size_base']
-            call_pnl = call_pnl_btc * spot_price
-            put_pnl = put_pnl_btc * spot_price
+            call_pnl_btc = (call_price - self.config['call_option_initial_cost_base'] / self.config['put_option_size_base']) * self.config['call_option_size_base']
+            put_pnl_btc = (put_price - self.config['put_option_initial_cost_base'] / self.config['put_option_size_base']) * self.config['put_option_size_base']
+            call_pnl = call_pnl_btc * bid
+            put_pnl = put_pnl_btc * bid
             return {
                 'call_pnl': call_pnl,
                 'put_pnl': put_pnl,
@@ -480,7 +482,7 @@ class TraderBot:
                 logger.info(f"Cancelled order: {order['orderId']}")
             except Exception as e:
                 logger.error(f"Failed to cancel order {order['orderId']}: {e}")
-        balances = self._get_current_balances(self._get_current_bid_ask())
+        balances = self._get_current_balances(self._get_current_mid_price())
         btc_balance = balances.get('BTC', 0)
         
         if btc_balance > 0:
