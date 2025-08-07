@@ -9,12 +9,14 @@ from src.binance_integration import BinanceIntegration
 from src.deribit_integration import DeribitIntegration
 from src.grid_calculator import GridCalculator
 from src.database import SimulativeDatabase
+from src.helpers.calculators import Calculator
 from src.table_schema_manager import TableSchemaManager
 
 logger = setup_logger()
 
 class TraderBot:
     def __init__(self, config: Dict[str, Any]):
+        self.calc = Calculator()
         self.config = config
         self.bot_name = config.get('bot_name', 'DefaultBot')
         self.bot_run = self._generate_bot_run()
@@ -50,7 +52,6 @@ class TraderBot:
         self.open_orders = []
         self.buy_trades = 0
         self.sell_trades = 0
-        self.realized_pnl = 0.0
         self.last_pnl_check = datetime.utcnow() - timedelta(minutes=1)
         self.last_price = None
         self.last_simulated_balances = None
@@ -351,10 +352,9 @@ class TraderBot:
             logger.error(f"Failed to place order: {e}")
 
     def _check_pnl(self):
-        spot_realized_pnl = self.calculate_spot_realized_pnl(self.bot_name)
         spot_unrealized_pnl = self._calculate_spot_unrealized_pnl()
-        options_data = self._calculate_options_pnl()
-        total_pnl = spot_unrealized_pnl + options_data['total_pnl']
+        options_unrealized_pnl = self._calculate_options_pnl()
+        total_pnl = spot_unrealized_pnl + options_unrealized_pnl['total_pnl']
         
         running_days = max(1, (datetime.utcnow() - self.start_time).days)
         daily_pnl = total_pnl / running_days
@@ -362,25 +362,16 @@ class TraderBot:
         initial_investment = self.quote_needed + self.config['call_option_initial_cost_base'] + self.config['put_option_initial_cost_base']
         daily_roi = daily_pnl / initial_investment if initial_investment > 0 else 0
         
-        self.database.save_to_db('spot_stats', {
-            'realized_pnl': self.realized_pnl,
+        self.database.save_to_db('stats', {
             'spot_unrealized_pnl': spot_unrealized_pnl,
-            'spot_realized_pnl': spot_realized_pnl,
-            'buy_trades': self.buy_trades,
-            'sell_trades': self.sell_trades,
-            'total_trades': self.buy_trades + self.sell_trades,
+            'call_unrealized_pnl': options_unrealized_pnl['call_pnl'],
+            'put_unrealized_pnl': options_unrealized_pnl['put_pnl'],
             'mode': 'test' if self.test_mode else 'live'
         }, self.bot_name, self.bot_run)
+
         
-        self.database.save_to_db('options_stats', {
-            'call_unrealized_pnl': options_data['call_pnl'],
-            'put_unrealized_pnl': options_data['put_pnl'],
-            'total_options_pnl': options_data['total_pnl'],
-            'mode': 'test' if self.test_mode else 'live'
-        }, self.bot_name, self.bot_run)
-        
-        logger.info(f"PnL Check - Spot: {spot_unrealized_pnl:.2f}, Options: {options_data['total_pnl']:.2f}, Total: {total_pnl:.2f}")
-        logger.info(f"Call PnL: {options_data['call_pnl']:.2f}, Put PnL: {options_data['put_pnl']:.2f}")
+        logger.info(f"PnL Check - Spot: {spot_unrealized_pnl:.2f}, Options: {options_unrealized_pnl['total_pnl']:.2f}, Total: {total_pnl:.2f}")
+        logger.info(f"Call PnL: {options_unrealized_pnl['call_pnl']:.2f}, Put PnL: {options_unrealized_pnl['put_pnl']:.2f}")
         logger.info(f"Daily ROI: {daily_roi:.4f} ({daily_roi*100:.2f}%)")
         
         if daily_roi >= self.config['daily_roi_target_for_exit']:
@@ -394,51 +385,22 @@ class TraderBot:
         fdusd_balance = balances.get('FDUSD', 0)
         initial_value = self.base_needed * self.config['spot_entry_price'] + self.quote_needed
         current_value = btc_balance * current_price + fdusd_balance
-        return current_value - initial_value + self.realized_pnl
+        return current_value - initial_value
 
-    def calculate_spot_realized_pnl(self, bot_name: str) -> float:
+    def get_historical_trades(self, bot_name: str, bot_run: str) -> List[Dict[str, Any]]:
         """
-        Calculate realized spot PnL for a given bot using FIFO matching.
-        Assumes 'trades' table has 'side' ('buy'/'sell'), 'price', 'quantity'.
+        Retrieve historical trades for a given bot run.
         """
-        trades = self.database.read_table('trades', bot_name)
+        trades = self.database.read_table('trades', bot_name, bot_run)
         if not trades:
-            return 0.0
+            logger.warning(f"No trades found for bot {bot_name} run {bot_run}")
+            return []
 
-        # Sort trades by timestamp
-        trades = sorted(trades, key=lambda x: x['timestamp'])
-        open_positions = []  # Each entry: [quantity, price]
-        realized_pnl = 0.0
-        # sum all buy trades
-        buy_trades_base = sum(float(trade['quantity']) for trade in trades if trade['side'].lower() == 'buy')
-        buy_trades_quote = sum(float(trade['quantity']) * float(trade['price']) for trade in trades if trade['side'].lower() == 'buy')
-        # sum all sell trades
-        sell_trades_base = sum(float(trade['quantity']) for trade in trades if trade['side'].lower() == 'sell')
-        sell_trades_quote = sum(float(trade['quantity']) * float(trade['price']) for trade in trades if trade['side'].lower() == 'sell')
-        if buy_trades_base == 0 or sell_trades_base == 0:
-            logger.warning("No trades found for PnL calculation")
-            return 0.0
-        realized_pnl = ((sell_trades_quote / sell_trades_base) - (buy_trades_quote / buy_trades_base))  * min(sell_trades_base, buy_trades_base)
-        # for trade in trades:
-        #     side = trade['side'].lower()
-        #     qty = float(trade['quantity'])
-        #     price = float(trade['price'])
-        #
-        #     if side == 'buy':
-        #         open_positions.append([qty, price])
-        #     elif side == 'sell':
-        #         qty_to_close = qty
-        #         while qty_to_close > 0 and open_positions:
-        #             open_qty, open_price = open_positions[0]
-        #             matched_qty = min(open_qty, qty_to_close)
-        #             pnl = (price - open_price) * matched_qty
-        #             realized_pnl += pnl
-        #             open_positions[0][0] -= matched_qty
-        #             qty_to_close -= matched_qty
-        #             if open_positions[0][0] == 0:
-        #                 open_positions.pop(0)
-        #         # If selling more than held, ignore excess (or handle as needed)
-        return realized_pnl
+        # Convert timestamps to datetime objects
+        for trade in trades:
+            trade['timestamp'] = pd.to_datetime(trade['timestamp'])
+
+        return trades
 
     def _calculate_options_pnl(self) -> Dict[str, float]:
         try:
