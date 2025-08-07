@@ -241,7 +241,6 @@ class GridderDashboard {
             const params = new URLSearchParams();
             
             if (this.selectedBotName) params.append('bot_name', this.selectedBotName);
-
             if (this.timeFilter) params.append('hours_filter', this.timeFilter.toString());
             
             url += params.toString();
