@@ -4,10 +4,8 @@ class GridderDashboard {
         this.autoRefresh = true;
         this.refreshTimer = null;
         this.selectedBotName = '';
-        this.selectedBotRun = '';
-        this.includeAllRuns = false;
         this.timeFilter = 6;
-        
+
         this.initializeControls();
         this.loadInitialData();
         this.startAutoRefresh();
@@ -38,29 +36,10 @@ class GridderDashboard {
         const botNameSelect = document.getElementById('bot-name-select');
         botNameSelect.addEventListener('change', (e) => {
             this.selectedBotName = e.target.value;
-            this.selectedBotRun = '';
-            this.loadBotRuns();
             if (this.selectedBotName) {
                 this.refreshData();
-                this.loadRunConfig();
+                this.loadBotConfig();
             }
-        });
-
-        const botRunSelect = document.getElementById('bot-run-select');
-        botRunSelect.addEventListener('change', (e) => {
-            this.selectedBotRun = e.target.value;
-            this.refreshData();
-        });
-
-        const includeAllRunsCheckbox = document.getElementById('include-all-runs');
-        includeAllRunsCheckbox.addEventListener('change', (e) => {
-            this.includeAllRuns = e.target.checked;
-            const botRunSelect = document.getElementById('bot-run-select');
-            botRunSelect.disabled = this.includeAllRuns;
-            if (this.includeAllRuns) {
-                this.selectedBotRun = '';
-            }
-            this.refreshData();
         });
 
         const timeFilterSelect = document.getElementById('time-filter');
@@ -103,7 +82,7 @@ class GridderDashboard {
                 this.loadTradesData(),
                 this.loadStatsData(),
                 this.loadOptionsPnlData(),
-                this.loadTotalPnlData(),
+                this.loadTotalUnrealizedPnlData(),
                 this.loadPriceData()
             ]);
             
@@ -119,8 +98,6 @@ class GridderDashboard {
             const params = new URLSearchParams();
             
             if (this.selectedBotName) params.append('bot_name', this.selectedBotName);
-            if (this.selectedBotRun && !this.includeAllRuns) params.append('bot_run', this.selectedBotRun);
-            if (this.includeAllRuns) params.append('include_all_runs', 'true');
             if (this.timeFilter) params.append('hours_filter', this.timeFilter.toString());
             
             url += params.toString();
@@ -141,8 +118,7 @@ class GridderDashboard {
             const params = new URLSearchParams();
             
             if (this.selectedBotName) params.append('bot_name', this.selectedBotName);
-            if (this.selectedBotRun && !this.includeAllRuns) params.append('bot_run', this.selectedBotRun);
-            if (this.includeAllRuns) params.append('include_all_runs', 'true');
+
             if (this.timeFilter) params.append('hours_filter', this.timeFilter.toString());
             
             url += params.toString();
@@ -229,6 +205,12 @@ class GridderDashboard {
             modeBarButtonsToRemove: ['pan2d', 'lasso2d', 'select2d']
         };
 
+        if (!trades || trades.length === 0) {
+            Plotly.purge('trading-chart');
+            const chartDiv = document.getElementById('trading-chart');
+            chartDiv.innerHTML = '<div style="text-align: center; padding: 2rem; color: #999;">No trades data available yet. The chart will update when trades are executed.</div>';
+            return;
+        }
         Plotly.newPlot('trading-chart', traces, layout, config);
     }
 
@@ -238,8 +220,7 @@ class GridderDashboard {
             const params = new URLSearchParams();
             
             if (this.selectedBotName) params.append('bot_name', this.selectedBotName);
-            if (this.selectedBotRun && !this.includeAllRuns) params.append('bot_run', this.selectedBotRun);
-            if (this.includeAllRuns) params.append('include_all_runs', 'true');
+
             if (this.timeFilter) params.append('hours_filter', this.timeFilter.toString());
             
             url += params.toString();
@@ -254,14 +235,13 @@ class GridderDashboard {
         }
     }
 
-    async loadTotalPnlData() {
+    async loadTotalUnrealizedPnlData() {
         try {
-            let url = '/api/total-pnl?';
+            let url = '/api/total-unrealized-pnl?';
             const params = new URLSearchParams();
             
             if (this.selectedBotName) params.append('bot_name', this.selectedBotName);
-            if (this.selectedBotRun && !this.includeAllRuns) params.append('bot_run', this.selectedBotRun);
-            if (this.includeAllRuns) params.append('include_all_runs', 'true');
+
             if (this.timeFilter) params.append('hours_filter', this.timeFilter.toString());
             
             url += params.toString();
@@ -282,8 +262,7 @@ class GridderDashboard {
             const params = new URLSearchParams();
             
             if (this.selectedBotName) params.append('bot_name', this.selectedBotName);
-            if (this.selectedBotRun && !this.includeAllRuns) params.append('bot_run', this.selectedBotRun);
-            if (this.includeAllRuns) params.append('include_all_runs', 'true');
+
             if (this.timeFilter) params.append('hours_filter', this.timeFilter.toString());
             
             url += params.toString();
@@ -437,72 +416,32 @@ class GridderDashboard {
         this.startAutoRefresh();
     }
 
-    async loadBotRuns() {
-    const botRunSelect = document.getElementById('bot-run-select');
-
-    if (!this.selectedBotName) {
-        botRunSelect.innerHTML = '<option value="">Select Run...</option>';
-        botRunSelect.disabled = true;
-        return;
-    }
-
-    try {
-        const response = await fetch(`/api/bot-runs?bot_name=${encodeURIComponent(this.selectedBotName)}`);
-        const data = await response.json();
-
-        if (data.runs && data.runs.length > 0) {
-            botRunSelect.innerHTML = '';
-            data.runs.forEach((run, idx) => {
-                const option = document.createElement('option');
-                option.value = run.bot_run;
-                option.textContent = `${run.bot_run} (${new Date(run.timestamp).toLocaleString()})`;
-                botRunSelect.appendChild(option);
-            });
-            botRunSelect.disabled = this.includeAllRuns;
-
-            // Auto-select the latest run
-            this.selectedBotRun = data.runs[0].bot_run;
-            botRunSelect.value = this.selectedBotRun;
-            this.loadRunConfig();
-        } else {
-            botRunSelect.innerHTML = '<option value="">Select Run...</option>';
-            botRunSelect.disabled = true;
-            this.selectedBotRun = '';
-        }
-    } catch (error) {
-        console.error('Error loading bot runs:', error);
-    }
-}
-
     async loadDefaultSelection() {
         console.log("loadDefaultSelection called")
         try {
             const response = await fetch('/api/latest-bot-run');
             const data = await response.json();
             
-            if (data.bot_name && data.bot_run) {
+            if (data.bot_name) {
                 this.selectedBotName = data.bot_name;
-                this.selectedBotRun = data.bot_run;
                 
                 document.getElementById('bot-name-select').value = this.selectedBotName;
-                await this.loadBotRuns();
-                document.getElementById('bot-run-select').value = this.selectedBotRun;
-                
-                await this.loadRunConfig();
+
+                await this.loadBotConfig();
             }
         } catch (error) {
             console.error('Error loading default selection:', error);
         }
     }
 
-    async loadRunConfig() {
-        if (!this.selectedBotName || !this.selectedBotRun) {
+    async loadBotConfig() {
+        if (!this.selectedBotName) {
             return;
         }
 
 
         try {
-            const response = await fetch(`/api/run-config?bot_name=${encodeURIComponent(this.selectedBotName)}&bot_run=${encodeURIComponent(this.selectedBotRun)}`);
+            const response = await fetch(`/api/bot_last_config?bot_name=${encodeURIComponent(this.selectedBotName)}`);
             const data = await response.json();
             console.log(data)
             
@@ -510,12 +449,12 @@ class GridderDashboard {
                 this.updateBotConfig(data.config);
             }
         } catch (error) {
-            console.error('Error loading run config:', error);
+            console.error('Error loading bot config:', error);
         }
     }
 
     updateBotConfig(config) {
-        const configContainer = document.getElementById('bot-config');
+        const configContainer = document.getElementById('bot-last-config');
         configContainer.innerHTML = ''; // Clear previous content
 
         Object.entries(config).forEach(([key, value]) => {

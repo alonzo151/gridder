@@ -66,11 +66,14 @@ def api_trades():
     
     try:
         bot_name = request.args.get('bot_name')
-        bot_run = request.args.get('bot_run')
+        hours_filter = request.args.get('hours_filter')
+        if hours_filter:
+            hours_filter = int(hours_filter)
         if bot_name == '':
             bot_name = None
-        
-        trades_df = data_reader.get_trades_data(bot_name, bot_run)
+
+
+        trades_df = data_reader.get_trades_data(bot_name=bot_name, hours_filter=hours_filter)
         
         trades = []
         for _, row in trades_df.iterrows():
@@ -94,18 +97,11 @@ def api_stats():
     
     try:
         bot_name = request.args.get('bot_name')
-        bot_run = request.args.get('bot_run')
-        include_all_runs = request.args.get('include_all_runs', 'false').lower() == 'true'
         hours_filter = request.args.get('hours_filter')
-        
-        if bot_name == '':
-            bot_name = None
-        if bot_run == '':
-            bot_run = None
         if hours_filter:
             hours_filter = int(hours_filter)
         
-        stats = data_reader.get_summary_stats(bot_name, bot_run, include_all_runs, hours_filter)
+        stats = data_reader.get_summary_stats(bot_name=bot_name, hours_filter=hours_filter)
         return jsonify(stats)
     except Exception as e:
         logger.error(f"Error getting stats: {e}")
@@ -118,10 +114,11 @@ def api_options_pnl():
     
     try:
         bot_name = request.args.get('bot_name')
-        if bot_name == '':
-            bot_name = None
-        
-        options_df = data_reader.get_options_pnl_data(bot_name)
+        hours_filter = request.args.get('hours_filter')
+        if hours_filter:
+            hours_filter = int(hours_filter)
+        options_df = data_reader.get_options_pnl_data(bot_name=bot_name, hours_filter=hours_filter)
+
         
         data = []
         for _, row in options_df.iterrows():
@@ -137,17 +134,17 @@ def api_options_pnl():
         logger.error(f"Error getting options PnL: {e}")
         return jsonify({'error': 'Failed to load options PnL'}), 500
 
-@app.route('/api/total-pnl')
-def api_total_pnl():
+@app.route('/api/total-unrealized-pnl')
+def api_total_unrealized_pnl():
     if not require_auth():
         return jsonify({'error': 'Unauthorized'}), 401
     
     try:
         bot_name = request.args.get('bot_name')
-        if bot_name == '':
-            bot_name = None
-        
-        total_pnl_df = data_reader.get_total_unrealized_pnl_data(bot_name)
+        hours_filter = request.args.get('hours_filter')
+        if hours_filter:
+            hours_filter = int(hours_filter)
+        total_pnl_df = data_reader.get_total_unrealized_pnl_data(bot_name=bot_name, hours_filter=hours_filter)
         
         data = []
         for _, row in total_pnl_df.iterrows():
@@ -169,10 +166,11 @@ def api_price_data():
     
     try:
         bot_name = request.args.get('bot_name')
-        if bot_name == '':
-            bot_name = None
-        
-        price_df = data_reader.get_price_data(bot_name)
+        hours_filter = request.args.get('hours_filter')
+        if hours_filter:
+            hours_filter = int(hours_filter)
+
+        price_df = data_reader.get_price_data(bot_name=bot_name, hours_filter=hours_filter)
         
         data = []
         for _, row in price_df.iterrows():
@@ -215,18 +213,18 @@ def api_latest_bot_run():
         logger.error(f"Error getting latest bot run: {e}")
         return jsonify({'error': 'Failed to load latest bot run'}), 500
 
-@app.route('/api/run-config')
-def api_run_config():
+@app.route('/api/bot_last_config')
+def get_bot_last_config():
     if not require_auth():
         return jsonify({'error': 'Unauthorized'}), 401
     
     try:
         bot_name = request.args.get('bot_name')
-        bot_run = request.args.get('bot_run')
-        if not bot_name or not bot_run:
+
+        if not bot_name:
             return jsonify({'error': 'bot_name and bot_run parameters required'}), 400
         
-        config = data_reader.get_run_config(bot_name, bot_run)
+        config = data_reader.get_bot_last_config(bot_name)
         return jsonify({'config': config})
     except Exception as e:
         logger.error(f"Error getting run config: {e}")
