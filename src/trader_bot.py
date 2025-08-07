@@ -142,11 +142,12 @@ class TraderBot:
         # get the btc balance from orders_df by using current_price
         max_price = self.orders_df['price'].max()
         min_price = self.orders_df['price'].min()
+        middle_price = (min_price + max_price) / 2
         if current_price < min_price:
             expected_quote_balance = 0
-            expected_base_balance = self.base_needed
+            expected_base_balance = self.base_needed + self.quote_needed /( (min_price + middle_price) / 2)
         elif current_price > max_price:
-            expected_quote_balance = self.quote_needed
+            expected_quote_balance = self.quote_needed + self.base_needed * ((middle_price + max_price) / 2)
             expected_base_balance = 0
         else:
             filtterd_orders = self.orders_df[self.orders_df['price'] <= current_price]
